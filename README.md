@@ -69,23 +69,32 @@ V3__descripcion_corta.sql
 
 ## Estructura
 
-Cada **módulo** es un paquete dentro de `com.example.backend` y adentro tiene
-una carpeta `comun/` más **una carpeta por caso de uso**:
+Cada **módulo** es un paquete dentro de `com.example.backend`. Adentro, primero va
+la **capa** (`controller`, `service`, `dto`…) y dentro de cada capa, **una carpeta por caso de uso**:
 
 ```
 modulo_seguridad_usuarios/
-  comun/                  lo que usan TODOS los casos de uso del módulo
-    entity/  repository/  security/  seed/  audit/  exception/  dto/  util/
-  iniciar_sesion/         CU02
-    controller/  service/  dto/
-  gestionar_usuarios/     CU01
-    controller/  service/  dto/
+  controller/
+    iniciar_sesion/        AuthController                    (CU02)
+    gestionar_usuarios/    UsuarioController, RolController  (CU01)
+  service/
+    iniciar_sesion/        AuthService
+    gestionar_usuarios/    UsuarioService, RolService, UsuarioMapper
+  dto/
+    iniciar_sesion/        LoginRequest, LoginResponse, UsuarioSesion
+    gestionar_usuarios/    CrearUsuarioRequest, UsuarioDetalle…
+    ErrorApi, PaginaRespuesta          ← compartidos (sin subcarpeta)
+  entity/                  compartidas por todos los casos de uso
+  repository/              compartidos por todos los casos de uso
+  security/  seed/  audit/  exception/  util/
 ```
 
-- **Tablas (`entity`) y sus `repository` van en `comun/`**: una misma tabla
-  (por ejemplo `usuario`) la usan varios casos de uso.
-- **`controller`, `service` y `dto` van en la carpeta de su caso de uso.**
-- Un caso de uso **no importa a otro caso de uso**. Si dos necesitan lo mismo, va en `comun/`.
+- **`controller`, `service` y `dto`**: tu clase va en la subcarpeta de **tu caso de uso**
+  (créala si no existe, ej. `service/configurar_perfil/`).
+- **`entity` y `repository` no llevan subcarpetas**: una misma tabla (por ejemplo `usuario`)
+  la usan varios casos de uso.
+- Un caso de uso **no importa a otro caso de uso**. Si dos necesitan lo mismo, va en la raíz
+  de la capa (sin subcarpeta) o en `util/`.
 
 La documentación de cada caso de uso está en `funcionalidades/`.
 
