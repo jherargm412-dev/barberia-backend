@@ -74,8 +74,14 @@ com.example.backend/
   exception/                 GLOBAL: excepciones, ManejadorGlobalExcepciones, ErrorApi
   security/                  GLOBAL: SecurityConfig, JWT, UsuarioAutenticado, permisos
   comun/                     GLOBAL: lo que comparten todos los módulos (PaginaRespuesta)
-  modulo_seguridad_usuarios/
-  modulo_.../                un paquete por módulo
+  modulos/                   un paquete por módulo (mismos nombres que en el frontend)
+    seguridad_usuarios/
+    gestion_clientes/
+    gestion_empleados/
+    servicios_reservas/
+    ventas_caja/
+    inventario_compras/
+    reportes/
 ```
 
 Lo **global** (fuera de los módulos) sirve a toda la app: cualquier módulo puede lanzar
@@ -86,7 +92,7 @@ Dentro de cada **módulo**, primero va la **capa** (`controller`, `service`, `dt
 de cada capa, **una carpeta por caso de uso**:
 
 ```
-modulo_seguridad_usuarios/
+modulos/seguridad_usuarios/
   controller/
     iniciar_sesion/        AuthController                    (CU02)
     gestionar_usuarios/    UsuarioController, RolController  (CU01)
