@@ -69,9 +69,24 @@ V3__descripcion_corta.sql
 
 ## Estructura
 
-Cada caso de uso / módulo va en su paquete dentro de `com.example.backend`
-(por ejemplo `modulo_seguridad_usuarios`), con sus subcarpetas
-`controller`, `service`, `repository`, etc.
+Cada **módulo** es un paquete dentro de `com.example.backend` y adentro tiene
+una carpeta `comun/` más **una carpeta por caso de uso**:
+
+```
+modulo_seguridad_usuarios/
+  comun/                  lo que usan TODOS los casos de uso del módulo
+    entity/  repository/  security/  seed/  audit/  exception/  dto/  util/
+  iniciar_sesion/         CU02
+    controller/  service/  dto/
+  gestionar_usuarios/     CU01
+    controller/  service/  dto/
+```
+
+- **Tablas (`entity`) y sus `repository` van en `comun/`**: una misma tabla
+  (por ejemplo `usuario`) la usan varios casos de uso.
+- **`controller`, `service` y `dto` van en la carpeta de su caso de uso.**
+- Un caso de uso **no importa a otro caso de uso**. Si dos necesitan lo mismo, va en `comun/`.
+
 La documentación de cada caso de uso está en `funcionalidades/`.
 
 ## Flujo de trabajo con Git

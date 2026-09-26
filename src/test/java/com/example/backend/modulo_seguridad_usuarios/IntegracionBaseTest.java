@@ -1,8 +1,8 @@
 package com.example.backend.modulo_seguridad_usuarios;
 
-import com.example.backend.modulo_seguridad_usuarios.entity.Usuario;
-import com.example.backend.modulo_seguridad_usuarios.repository.BitacoraRepository;
-import com.example.backend.modulo_seguridad_usuarios.repository.UsuarioRepository;
+import com.example.backend.modulo_seguridad_usuarios.comun.entity.Usuario;
+import com.example.backend.modulo_seguridad_usuarios.comun.repository.BitacoraRepository;
+import com.example.backend.modulo_seguridad_usuarios.comun.repository.UsuarioRepository;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;

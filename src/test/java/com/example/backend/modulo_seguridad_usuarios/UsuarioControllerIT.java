@@ -1,12 +1,12 @@
 package com.example.backend.modulo_seguridad_usuarios;
 
-import com.example.backend.modulo_seguridad_usuarios.entity.Bitacora;
-import com.example.backend.modulo_seguridad_usuarios.entity.Usuario;
-import com.example.backend.modulo_seguridad_usuarios.repository.ClienteRepository;
-import com.example.backend.modulo_seguridad_usuarios.repository.EmpleadoRepository;
-import com.example.backend.modulo_seguridad_usuarios.repository.PermisoRepository;
-import com.example.backend.modulo_seguridad_usuarios.repository.RolRepository;
-import com.example.backend.modulo_seguridad_usuarios.entity.EstadoUsuario;
+import com.example.backend.modulo_seguridad_usuarios.comun.entity.Bitacora;
+import com.example.backend.modulo_seguridad_usuarios.comun.entity.Usuario;
+import com.example.backend.modulo_seguridad_usuarios.comun.repository.ClienteRepository;
+import com.example.backend.modulo_seguridad_usuarios.comun.repository.EmpleadoRepository;
+import com.example.backend.modulo_seguridad_usuarios.comun.repository.PermisoRepository;
+import com.example.backend.modulo_seguridad_usuarios.comun.repository.RolRepository;
+import com.example.backend.modulo_seguridad_usuarios.comun.entity.EstadoUsuario;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
