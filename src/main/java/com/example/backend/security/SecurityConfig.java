@@ -1,7 +1,7 @@
 package com.example.backend.security;
 
-import com.example.backend.modulo_seguridad_usuarios.repository.UsuarioRepository;
-import com.example.backend.modulo_seguridad_usuarios.seed.PropiedadesSemilla;
+import com.example.backend.modulos.seguridad_usuarios.repository.UsuarioRepository;
+import com.example.backend.modulos.seguridad_usuarios.seed.PropiedadesSemilla;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.context.properties.EnableConfigurationProperties;
 import org.springframework.context.annotation.Bean;

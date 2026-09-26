@@ -1,7 +1,7 @@
 package com.example.backend.security;
 
-import com.example.backend.modulo_seguridad_usuarios.entity.Usuario;
-import com.example.backend.modulo_seguridad_usuarios.repository.UsuarioRepository;
+import com.example.backend.modulos.seguridad_usuarios.entity.Usuario;
+import com.example.backend.modulos.seguridad_usuarios.repository.UsuarioRepository;
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;

@@ -1,6 +1,6 @@
 # 06 · Guía de ejecución — Backend CU01 y CU02
 
-Código en `src/main/java/com/example/backend/modulo_seguridad_usuarios/`.
+Código en `src/main/java/com/example/backend/modulos/seguridad_usuarios/`.
 
 ## Requisitos
 

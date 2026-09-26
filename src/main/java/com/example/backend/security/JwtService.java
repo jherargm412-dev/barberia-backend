@@ -1,6 +1,6 @@
 package com.example.backend.security;
 
-import com.example.backend.modulo_seguridad_usuarios.entity.Usuario;
+import com.example.backend.modulos.seguridad_usuarios.entity.Usuario;
 import com.nimbusds.jose.jwk.source.ImmutableSecret;
 import org.springframework.security.oauth2.jose.jws.MacAlgorithm;
 import org.springframework.security.oauth2.jwt.*;
