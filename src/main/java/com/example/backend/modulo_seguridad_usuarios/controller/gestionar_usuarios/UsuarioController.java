@@ -1,9 +1,9 @@
 package com.example.backend.modulo_seguridad_usuarios.controller.gestionar_usuarios;
 
 import com.example.backend.modulo_seguridad_usuarios.entity.EstadoUsuario;
-import com.example.backend.modulo_seguridad_usuarios.security.UsuarioAutenticado;
+import com.example.backend.security.UsuarioAutenticado;
 import com.example.backend.modulo_seguridad_usuarios.service.gestionar_usuarios.UsuarioService;
-import com.example.backend.modulo_seguridad_usuarios.dto.*;
+import com.example.backend.comun.PaginaRespuesta;
 import com.example.backend.modulo_seguridad_usuarios.dto.gestionar_usuarios.*;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;

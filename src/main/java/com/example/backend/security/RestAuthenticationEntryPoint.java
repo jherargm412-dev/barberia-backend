@@ -1,6 +1,6 @@
-package com.example.backend.modulo_seguridad_usuarios.security;
+package com.example.backend.security;
 
-import com.example.backend.modulo_seguridad_usuarios.dto.ErrorApi;
+import com.example.backend.exception.ErrorApi;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import lombok.RequiredArgsConstructor;

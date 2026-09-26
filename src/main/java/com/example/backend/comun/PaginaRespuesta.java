@@ -1,4 +1,4 @@
-package com.example.backend.modulo_seguridad_usuarios.dto;
+package com.example.backend.comun;
 
 import org.springframework.data.domain.Page;
 

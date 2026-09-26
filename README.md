@@ -69,8 +69,21 @@ V3__descripcion_corta.sql
 
 ## Estructura
 
-Cada **módulo** es un paquete dentro de `com.example.backend`. Adentro, primero va
-la **capa** (`controller`, `service`, `dto`…) y dentro de cada capa, **una carpeta por caso de uso**:
+```
+com.example.backend/
+  exception/                 GLOBAL: excepciones, ManejadorGlobalExcepciones, ErrorApi
+  security/                  GLOBAL: SecurityConfig, JWT, UsuarioAutenticado, permisos
+  comun/                     GLOBAL: lo que comparten todos los módulos (PaginaRespuesta)
+  modulo_seguridad_usuarios/
+  modulo_.../                un paquete por módulo
+```
+
+Lo **global** (fuera de los módulos) sirve a toda la app: cualquier módulo puede lanzar
+`RecursoNoEncontradoException`, usar `UsuarioAutenticado` o devolver `PaginaRespuesta`.
+Avisa al equipo antes de cambiar algo ahí.
+
+Dentro de cada **módulo**, primero va la **capa** (`controller`, `service`, `dto`…) y dentro
+de cada capa, **una carpeta por caso de uso**:
 
 ```
 modulo_seguridad_usuarios/
@@ -85,10 +98,11 @@ modulo_seguridad_usuarios/
   dto/
     iniciar_sesion/        LoginRequest, LoginResponse, UsuarioSesion
     gestionar_usuarios/    CrearUsuarioRequest, UsuarioDetalle…
-    ErrorApi, PaginaRespuesta          ← compartidos (sin subcarpeta)
-  entity/                  compartidas por todos los casos de uso
-  repository/              compartidos por todos los casos de uso
-  security/  seed/  audit/  exception/  util/
+  entity/                  compartidas por todos los casos de uso del módulo
+  repository/              compartidos por todos los casos de uso del módulo
+  seed/                    AdminSeeder (datos iniciales de este módulo)
+  audit/                   BitacoraService (otros módulos pueden usarlo para registrar acciones)
+  util/
 ```
 
 - **`controller`, `service`, `mapper` y `dto`**: tu clase va en la subcarpeta de **tu caso de uso**

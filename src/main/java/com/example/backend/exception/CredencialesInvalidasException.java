@@ -1,4 +1,4 @@
-package com.example.backend.modulo_seguridad_usuarios.exception;
+package com.example.backend.exception;
 
 /**
  * Fallo de autenticación (CU02 4a). Mensaje único y genérico: no distingue entre

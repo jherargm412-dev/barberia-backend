@@ -1,11 +1,11 @@
-package com.example.backend.modulo_seguridad_usuarios.exception;
+package com.example.backend.exception;
 
-import com.example.backend.modulo_seguridad_usuarios.exception.ConflictoException;
-import com.example.backend.modulo_seguridad_usuarios.exception.CredencialesInvalidasException;
-import com.example.backend.modulo_seguridad_usuarios.exception.RecursoNoEncontradoException;
-import com.example.backend.modulo_seguridad_usuarios.exception.ValidacionNegocioException;
-import com.example.backend.modulo_seguridad_usuarios.security.RestAccessDeniedHandler;
-import com.example.backend.modulo_seguridad_usuarios.dto.ErrorApi;
+import com.example.backend.exception.ConflictoException;
+import com.example.backend.exception.CredencialesInvalidasException;
+import com.example.backend.exception.RecursoNoEncontradoException;
+import com.example.backend.exception.ValidacionNegocioException;
+import com.example.backend.security.RestAccessDeniedHandler;
+import com.example.backend.exception.ErrorApi;
 import jakarta.servlet.http.HttpServletRequest;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.dao.DataIntegrityViolationException;

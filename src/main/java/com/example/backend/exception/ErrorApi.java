@@ -1,4 +1,4 @@
-package com.example.backend.modulo_seguridad_usuarios.dto;
+package com.example.backend.exception;
 
 import com.fasterxml.jackson.annotation.JsonInclude;
 import org.springframework.http.HttpStatus;

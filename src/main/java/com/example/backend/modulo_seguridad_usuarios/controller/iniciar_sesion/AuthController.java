@@ -1,6 +1,6 @@
 package com.example.backend.modulo_seguridad_usuarios.controller.iniciar_sesion;
 
-import com.example.backend.modulo_seguridad_usuarios.security.UsuarioAutenticado;
+import com.example.backend.security.UsuarioAutenticado;
 import com.example.backend.modulo_seguridad_usuarios.service.iniciar_sesion.AuthService;
 import com.example.backend.modulo_seguridad_usuarios.dto.iniciar_sesion.LoginRequest;
 import com.example.backend.modulo_seguridad_usuarios.dto.iniciar_sesion.LoginResponse;
