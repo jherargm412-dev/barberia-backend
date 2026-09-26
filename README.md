@@ -15,8 +15,8 @@ No hace falta instalar Gradle: se usa el wrapper (`./gradlew`).
 1. Clonar el repositorio:
 
    ```bash
-   git clone <URL-del-repo>
-   cd <carpeta-del-repo>
+   git clone https://github.com/jherargm412-dev/barberia-backend.git
+   cd barberia-backend
    ```
 
 2. Crear la base de datos vacía en PostgreSQL (las tablas las crea Flyway solo):
@@ -28,7 +28,8 @@ No hace falta instalar Gradle: se usa el wrapper (`./gradlew`).
 3. Copiar el archivo de ejemplo de variables y poner **tus** valores:
 
    ```bash
-   cp .env.example .env
+   cp .env.example .env       # macOS / Linux / Git Bash / PowerShell
+   copy .env.example .env     # Windows (CMD)
    ```
 
    Como mínimo cambia `DB_PASSWORD` (la contraseña de tu PostgreSQL) y `JWT_SECRET`
@@ -46,7 +47,8 @@ No hace falta instalar Gradle: se usa el wrapper (`./gradlew`).
 ## Pruebas
 
 ```bash
-./gradlew test
+./gradlew test          # macOS / Linux
+gradlew.bat test        # Windows
 ```
 
 Las pruebas usan la misma base `barber` pero en un esquema aislado `cu_test`
