@@ -54,6 +54,8 @@ Las pruebas usan la misma base `barber` pero en un esquema aislado `cu_test`
 
 ## Base de datos (Flyway)
 
+¿Qué es Flyway y por qué no usamos `ddl-auto=update`? Lee [docs/flyway.md](docs/flyway.md).
+
 Los cambios de esquema van **solo** como migraciones nuevas en
 `src/main/resources/db/migration`, con el siguiente número libre:
 
