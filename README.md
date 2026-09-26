@@ -79,7 +79,9 @@ modulo_seguridad_usuarios/
     gestionar_usuarios/    UsuarioController, RolController  (CU01)
   service/
     iniciar_sesion/        AuthService
-    gestionar_usuarios/    UsuarioService, RolService, UsuarioMapper
+    gestionar_usuarios/    UsuarioService, RolService
+  mapper/
+    gestionar_usuarios/    UsuarioMapper   (convierte entidad → DTO)
   dto/
     iniciar_sesion/        LoginRequest, LoginResponse, UsuarioSesion
     gestionar_usuarios/    CrearUsuarioRequest, UsuarioDetalle…
@@ -89,7 +91,7 @@ modulo_seguridad_usuarios/
   security/  seed/  audit/  exception/  util/
 ```
 
-- **`controller`, `service` y `dto`**: tu clase va en la subcarpeta de **tu caso de uso**
+- **`controller`, `service`, `mapper` y `dto`**: tu clase va en la subcarpeta de **tu caso de uso**
   (créala si no existe, ej. `service/configurar_perfil/`).
 - **`entity` y `repository` no llevan subcarpetas**: una misma tabla (por ejemplo `usuario`)
   la usan varios casos de uso.

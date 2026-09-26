@@ -6,6 +6,7 @@ import com.example.backend.modulo_seguridad_usuarios.entity.*;
 import com.example.backend.modulo_seguridad_usuarios.exception.ConflictoException;
 import com.example.backend.modulo_seguridad_usuarios.exception.RecursoNoEncontradoException;
 import com.example.backend.modulo_seguridad_usuarios.exception.ValidacionNegocioException;
+import com.example.backend.modulo_seguridad_usuarios.mapper.gestionar_usuarios.UsuarioMapper;
 import com.example.backend.modulo_seguridad_usuarios.repository.*;
 import com.example.backend.modulo_seguridad_usuarios.security.PasswordPolicy;
 import com.example.backend.modulo_seguridad_usuarios.security.UsuarioAutenticado;

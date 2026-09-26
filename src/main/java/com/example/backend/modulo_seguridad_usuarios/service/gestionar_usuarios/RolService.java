@@ -1,5 +1,6 @@
 package com.example.backend.modulo_seguridad_usuarios.service.gestionar_usuarios;
 
+import com.example.backend.modulo_seguridad_usuarios.mapper.gestionar_usuarios.UsuarioMapper;
 import com.example.backend.modulo_seguridad_usuarios.repository.RolRepository;
 import com.example.backend.modulo_seguridad_usuarios.dto.gestionar_usuarios.RolResumen;
 import lombok.RequiredArgsConstructor;

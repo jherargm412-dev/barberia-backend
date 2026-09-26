@@ -1,4 +1,4 @@
-package com.example.backend.modulo_seguridad_usuarios.service.gestionar_usuarios;
+package com.example.backend.modulo_seguridad_usuarios.mapper.gestionar_usuarios;
 
 import com.example.backend.modulo_seguridad_usuarios.entity.Cliente;
 import com.example.backend.modulo_seguridad_usuarios.entity.Empleado;
