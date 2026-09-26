@@ -69,9 +69,49 @@ V3__descripcion_corta.sql
 
 ## Estructura
 
-Cada caso de uso / módulo va en su paquete dentro de `com.example.backend`
-(por ejemplo `modulo_seguridad_usuarios`), con sus subcarpetas
-`controller`, `service`, `repository`, etc.
+```
+com.example.backend/
+  exception/                 GLOBAL: excepciones, ManejadorGlobalExcepciones, ErrorApi
+  security/                  GLOBAL: SecurityConfig, JWT, UsuarioAutenticado, permisos
+  comun/                     GLOBAL: lo que comparten todos los módulos (PaginaRespuesta)
+  modulo_seguridad_usuarios/
+  modulo_.../                un paquete por módulo
+```
+
+Lo **global** (fuera de los módulos) sirve a toda la app: cualquier módulo puede lanzar
+`RecursoNoEncontradoException`, usar `UsuarioAutenticado` o devolver `PaginaRespuesta`.
+Avisa al equipo antes de cambiar algo ahí.
+
+Dentro de cada **módulo**, primero va la **capa** (`controller`, `service`, `dto`…) y dentro
+de cada capa, **una carpeta por caso de uso**:
+
+```
+modulo_seguridad_usuarios/
+  controller/
+    iniciar_sesion/        AuthController                    (CU02)
+    gestionar_usuarios/    UsuarioController, RolController  (CU01)
+  service/
+    iniciar_sesion/        AuthService
+    gestionar_usuarios/    UsuarioService, RolService
+  mapper/
+    gestionar_usuarios/    UsuarioMapper   (convierte entidad → DTO)
+  dto/
+    iniciar_sesion/        LoginRequest, LoginResponse, UsuarioSesion
+    gestionar_usuarios/    CrearUsuarioRequest, UsuarioDetalle…
+  entity/                  compartidas por todos los casos de uso del módulo
+  repository/              compartidos por todos los casos de uso del módulo
+  seed/                    AdminSeeder (datos iniciales de este módulo)
+  audit/                   BitacoraService (otros módulos pueden usarlo para registrar acciones)
+  util/
+```
+
+- **`controller`, `service`, `mapper` y `dto`**: tu clase va en la subcarpeta de **tu caso de uso**
+  (créala si no existe, ej. `service/configurar_perfil/`).
+- **`entity` y `repository` no llevan subcarpetas**: una misma tabla (por ejemplo `usuario`)
+  la usan varios casos de uso.
+- Un caso de uso **no importa a otro caso de uso**. Si dos necesitan lo mismo, va en la raíz
+  de la capa (sin subcarpeta) o en `util/`.
+
 La documentación de cada caso de uso está en `funcionalidades/`.
 
 ## Flujo de trabajo con Git

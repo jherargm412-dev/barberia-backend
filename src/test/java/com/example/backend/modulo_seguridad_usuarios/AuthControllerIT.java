@@ -3,7 +3,7 @@ package com.example.backend.modulo_seguridad_usuarios;
 import com.example.backend.modulo_seguridad_usuarios.entity.Bitacora;
 import com.example.backend.modulo_seguridad_usuarios.entity.EstadoUsuario;
 import com.example.backend.modulo_seguridad_usuarios.entity.Usuario;
-import com.example.backend.modulo_seguridad_usuarios.security.JwtService;
+import com.example.backend.security.JwtService;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
