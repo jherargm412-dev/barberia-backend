@@ -15,9 +15,12 @@ import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 import org.springframework.web.method.annotation.MethodArgumentTypeMismatchException;
 import org.springframework.web.servlet.resource.NoResourceFoundException;
+import tools.jackson.core.JacksonException;
+import tools.jackson.databind.exc.MismatchedInputException;
 
 import java.util.LinkedHashMap;
 import java.util.Map;
+import java.util.stream.Collectors;
 
 /** Traduce excepciones al formato {@link ErrorApi}. */
 @Slf4j
@@ -37,8 +40,17 @@ public class ManejadorGlobalExcepciones {
         return responder(HttpStatus.BAD_REQUEST, primerMensaje == null ? "Datos inválidos" : primerMensaje, req, campos);
     }
 
+    /**
+     * JSON que no se puede leer. Si falla un campo concreto por tipo (ej. "precio": "abc" o un enum
+     * inexistente) se indica ese campo; si el cuerpo entero es ilegible, mensaje genérico.
+     */
     @ExceptionHandler(HttpMessageNotReadableException.class)
     public ResponseEntity<ErrorApi> cuerpoIlegible(HttpMessageNotReadableException ex, HttpServletRequest req) {
+        String campo = campoConTipoInvalido(ex);
+        if (campo != null) {
+            return responder(HttpStatus.BAD_REQUEST, "El valor ingresado no es válido", req,
+                    Map.of(campo, "valor no válido"));
+        }
         return responder(HttpStatus.BAD_REQUEST, "El cuerpo de la petición no es válido", req, null);
     }
 
@@ -79,6 +91,11 @@ public class ManejadorGlobalExcepciones {
         return responder(HttpStatus.CONFLICT, "Conflicto de integridad de datos", req, null);
     }
 
+    @ExceptionHandler(ErrorAlGuardarException.class)
+    public ResponseEntity<ErrorApi> errorAlGuardar(ErrorAlGuardarException ex, HttpServletRequest req) {
+        return responder(HttpStatus.INTERNAL_SERVER_ERROR, ex.getMessage(), req, null);
+    }
+
     @ExceptionHandler(CredencialesInvalidasException.class)
     public ResponseEntity<ErrorApi> credencialesInvalidas(CredencialesInvalidasException ex, HttpServletRequest req) {
         return responder(HttpStatus.UNAUTHORIZED, CredencialesInvalidasException.MENSAJE, req, null);
@@ -98,6 +115,20 @@ public class ManejadorGlobalExcepciones {
     public ResponseEntity<ErrorApi> errorGeneral(Exception ex, HttpServletRequest req) {
         log.error("Error no controlado en {}", req.getRequestURI(), ex);
         return responder(HttpStatus.INTERNAL_SERVER_ERROR, "Error interno del servidor", req, null);
+    }
+
+    /** Ruta del campo que Jackson no pudo convertir, ej. "precio" o "empleado.tipoContrato"; null si no aplica. */
+    private static String campoConTipoInvalido(Throwable ex) {
+        for (Throwable t = ex; t != null; t = t.getCause()) {
+            if (t instanceof MismatchedInputException jackson) {
+                String ruta = jackson.getPath().stream()
+                        .map(JacksonException.Reference::getPropertyName)
+                        .filter(nombre -> nombre != null)
+                        .collect(Collectors.joining("."));
+                return ruta.isEmpty() ? null : ruta;
+            }
+        }
+        return null;
     }
 
     private static ResponseEntity<ErrorApi> responder(HttpStatus estado, String mensaje, HttpServletRequest req,
