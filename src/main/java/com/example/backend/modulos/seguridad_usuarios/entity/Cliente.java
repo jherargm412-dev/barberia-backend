@@ -36,6 +36,10 @@ public class Cliente {
     @Column(name = "fecha_registro", nullable = false)
     private LocalDate fechaRegistro;
 
+    /** Permite desactivar al cliente sin perder sus reservas y ventas anteriores. */
+    @Column(name = "activo", nullable = false)
+    private boolean activo = true;
+
     @PrePersist
     void alPersistir() {
         if (fechaRegistro == null) {
