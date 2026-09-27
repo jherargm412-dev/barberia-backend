@@ -96,6 +96,11 @@ public class ManejadorGlobalExcepciones {
         return responder(HttpStatus.INTERNAL_SERVER_ERROR, ex.getMessage(), req, null);
     }
 
+    @ExceptionHandler(ErrorAlConsultarException.class)
+    public ResponseEntity<ErrorApi> errorAlConsultar(ErrorAlConsultarException ex, HttpServletRequest req) {
+        return responder(HttpStatus.INTERNAL_SERVER_ERROR, ex.getMessage(), req, null);
+    }
+
     @ExceptionHandler(CredencialesInvalidasException.class)
     public ResponseEntity<ErrorApi> credencialesInvalidas(CredencialesInvalidasException ex, HttpServletRequest req) {
         return responder(HttpStatus.UNAUTHORIZED, CredencialesInvalidasException.MENSAJE, req, null);
@@ -103,7 +108,7 @@ public class ManejadorGlobalExcepciones {
 
     @ExceptionHandler(AccessDeniedException.class)
     public ResponseEntity<ErrorApi> accesoDenegado(AccessDeniedException ex, HttpServletRequest req) {
-        return responder(HttpStatus.FORBIDDEN, RestAccessDeniedHandler.MENSAJE, req, null);
+        return responder(HttpStatus.FORBIDDEN, RestAccessDeniedHandler.mensajePara(req.getRequestURI()), req, null);
     }
 
     @ExceptionHandler(HttpRequestMethodNotSupportedException.class)

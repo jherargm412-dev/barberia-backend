@@ -9,6 +9,7 @@ import org.hibernate.annotations.JdbcTypeCode;
 import org.hibernate.type.SqlTypes;
 
 import java.time.LocalDateTime;
+import java.time.ZoneId;
 
 /** Registro de auditoría (RF5). {@code usuario} es quien ejecuta la acción. */
 @Entity
@@ -17,6 +18,9 @@ import java.time.LocalDateTime;
 @Setter
 @NoArgsConstructor
 public class Bitacora {
+
+    /** CU05 §1: fecha_hora se guarda y se filtra en hora de Bolivia, sin depender de la zona del servidor. */
+    public static final ZoneId ZONA_HORARIA = ZoneId.of("America/La_Paz");
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
@@ -54,7 +58,7 @@ public class Bitacora {
     @PrePersist
     void alPersistir() {
         if (fechaHora == null) {
-            fechaHora = LocalDateTime.now();
+            fechaHora = LocalDateTime.now(ZONA_HORARIA);
         }
     }
 }
