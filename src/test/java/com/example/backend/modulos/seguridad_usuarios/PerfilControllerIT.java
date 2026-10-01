@@ -49,8 +49,8 @@ class PerfilControllerIT extends IntegracionBaseTest {
     @Test
     @DisplayName("1. Barbero consulta su perfil: datos personales + laborales de solo lectura, sin contraseña")
     void consultarEmpleado() throws Exception {
-        crearUsuario(tokenAdmin(), barbero("barbero.cu04@houseofcut.bo", "Clave123"));
-        mockMvc.perform(conToken(get(URL), token("barbero.cu04@houseofcut.bo", "Clave123")))
+        crearUsuario(tokenAdmin(), barbero("barbero.cu04@houseofcut.bo", "Clave123!"));
+        mockMvc.perform(conToken(get(URL), token("barbero.cu04@houseofcut.bo", "Clave123!")))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.correo").value("barbero.cu04@houseofcut.bo"))
                 .andExpect(jsonPath("$.telefono").value("71234567"))
@@ -64,8 +64,8 @@ class PerfilControllerIT extends IntegracionBaseTest {
     @Test
     @DisplayName("2. Cliente consulta su perfil: sin bloque de empleado; sin token: 401")
     void consultarCliente() throws Exception {
-        crearUsuario(tokenAdmin(), cliente("cliente.cu04@houseofcut.bo", "Clave123"));
-        mockMvc.perform(conToken(get(URL), token("cliente.cu04@houseofcut.bo", "Clave123")))
+        crearUsuario(tokenAdmin(), cliente("cliente.cu04@houseofcut.bo", "Clave123!"));
+        mockMvc.perform(conToken(get(URL), token("cliente.cu04@houseofcut.bo", "Clave123!")))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.empleado").doesNotExist());
         mockMvc.perform(get(URL)).andExpect(status().isUnauthorized());
@@ -74,8 +74,8 @@ class PerfilControllerIT extends IntegracionBaseTest {
     @Test
     @DisplayName("3. Editar datos: 200, bitácora del propio usuario, cliente sincronizado, el correo no cambia")
     void actualizar() throws Exception {
-        int id = crearUsuario(tokenAdmin(), cliente("editar.cu04@houseofcut.bo", "Clave123"));
-        String token = token("editar.cu04@houseofcut.bo", "Clave123");
+        int id = crearUsuario(tokenAdmin(), cliente("editar.cu04@houseofcut.bo", "Clave123!"));
+        String token = token("editar.cu04@houseofcut.bo", "Clave123!");
         Map<String, Object> cuerpo = datos("  Ana Pérez  ", "+591 765-43210", "1995-04-12");
         cuerpo.put("correo", "otro@houseofcut.bo"); // se ignora: el correo no se edita aquí
 
@@ -104,8 +104,8 @@ class PerfilControllerIT extends IntegracionBaseTest {
     @Test
     @DisplayName("4. Validaciones: nombre vacío, teléfono con letras o corto, fecha futura → 400")
     void validaciones() throws Exception {
-        crearUsuario(tokenAdmin(), cliente("valida.cu04@houseofcut.bo", "Clave123"));
-        String token = token("valida.cu04@houseofcut.bo", "Clave123");
+        crearUsuario(tokenAdmin(), cliente("valida.cu04@houseofcut.bo", "Clave123!"));
+        String token = token("valida.cu04@houseofcut.bo", "Clave123!");
         mockMvc.perform(conToken(put(URL), token).content(json(datos("  ", null, null))))
                 .andExpect(status().isBadRequest())
                 .andExpect(jsonPath("$.campos.nombre").exists());
@@ -128,14 +128,14 @@ class PerfilControllerIT extends IntegracionBaseTest {
     @Test
     @DisplayName("5. Cambiar contraseña: 200, la anterior deja de funcionar, bitácora sin hash")
     void cambiarContrasena() throws Exception {
-        int id = crearUsuario(tokenAdmin(), cliente("clave.cu04@houseofcut.bo", "Vieja123"));
-        String token = token("clave.cu04@houseofcut.bo", "Vieja123");
-        mockMvc.perform(conToken(patch(URL + "/contrasena"), token).content(json(claves("Vieja123", "Nueva456", "Nueva456"))))
+        int id = crearUsuario(tokenAdmin(), cliente("clave.cu04@houseofcut.bo", "Vieja123!"));
+        String token = token("clave.cu04@houseofcut.bo", "Vieja123!");
+        mockMvc.perform(conToken(patch(URL + "/contrasena"), token).content(json(claves("Vieja123!", "Nueva456!", "Nueva456!"))))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.mensaje").value("Contraseña actualizada correctamente"));
 
-        assertThat(loginResultado("clave.cu04@houseofcut.bo", "Vieja123").getResponse().getStatus()).isEqualTo(401);
-        assertThat(loginResultado("clave.cu04@houseofcut.bo", "Nueva456").getResponse().getStatus()).isEqualTo(200);
+        assertThat(loginResultado("clave.cu04@houseofcut.bo", "Vieja123!").getResponse().getStatus()).isEqualTo(401);
+        assertThat(loginResultado("clave.cu04@houseofcut.bo", "Nueva456!").getResponse().getStatus()).isEqualTo(200);
         Bitacora b = bitacoraRepository.findByAccionOrderByIdBitacoraDesc("PERFIL_CAMBIAR_CONTRASENA").getFirst();
         assertThat(b.getUsuario().getIdUsuario()).isEqualTo(id);
         assertThat(b.getDatosNuevos()).isEqualTo("{\"idUsuario\":" + id + "}");
@@ -144,29 +144,29 @@ class PerfilControllerIT extends IntegracionBaseTest {
     @Test
     @DisplayName("6. Contraseña actual incorrecta (400, no 401), confirmación distinta, igual a la actual, vacía")
     void cambiarContrasenaErrores() throws Exception {
-        crearUsuario(tokenAdmin(), cliente("clave2.cu04@houseofcut.bo", "Vieja123"));
-        String token = token("clave2.cu04@houseofcut.bo", "Vieja123");
-        mockMvc.perform(conToken(patch(URL + "/contrasena"), token).content(json(claves("Otra999", "Nueva456", "Nueva456"))))
+        crearUsuario(tokenAdmin(), cliente("clave2.cu04@houseofcut.bo", "Vieja123!"));
+        String token = token("clave2.cu04@houseofcut.bo", "Vieja123!");
+        mockMvc.perform(conToken(patch(URL + "/contrasena"), token).content(json(claves("Otra999", "Nueva456!", "Nueva456!"))))
                 .andExpect(status().isBadRequest())
                 .andExpect(jsonPath("$.message").value("La contraseña actual es incorrecta"));
-        mockMvc.perform(conToken(patch(URL + "/contrasena"), token).content(json(claves("Vieja123", "Nueva456", "Nueva457"))))
+        mockMvc.perform(conToken(patch(URL + "/contrasena"), token).content(json(claves("Vieja123!", "Nueva456!", "Nueva457!"))))
                 .andExpect(status().isBadRequest())
                 .andExpect(jsonPath("$.message").value("La confirmación no coincide con la nueva contraseña"));
-        mockMvc.perform(conToken(patch(URL + "/contrasena"), token).content(json(claves("Vieja123", "Vieja123", "Vieja123"))))
+        mockMvc.perform(conToken(patch(URL + "/contrasena"), token).content(json(claves("Vieja123!", "Vieja123!", "Vieja123!"))))
                 .andExpect(status().isBadRequest())
                 .andExpect(jsonPath("$.message").value("La nueva contraseña debe ser distinta de la actual"));
-        mockMvc.perform(conToken(patch(URL + "/contrasena"), token).content(json(claves("Vieja123", " ", " "))))
+        mockMvc.perform(conToken(patch(URL + "/contrasena"), token).content(json(claves("Vieja123!", " ", " "))))
                 .andExpect(status().isBadRequest());
         assertThat(bitacoraRepository.countByAccion("PERFIL_CAMBIAR_CONTRASENA")).isZero();
-        assertThat(loginResultado("clave2.cu04@houseofcut.bo", "Vieja123").getResponse().getStatus()).isEqualTo(200);
+        assertThat(loginResultado("clave2.cu04@houseofcut.bo", "Vieja123!").getResponse().getStatus()).isEqualTo(200);
     }
 
     @Test
     @DisplayName("7. Historial de inicios de sesión: solo los propios, el más reciente primero")
     void sesiones() throws Exception {
-        crearUsuario(tokenAdmin(), cliente("sesiones.cu04@houseofcut.bo", "Clave123"));
-        token("sesiones.cu04@houseofcut.bo", "Clave123");
-        String token = token("sesiones.cu04@houseofcut.bo", "Clave123");
+        crearUsuario(tokenAdmin(), cliente("sesiones.cu04@houseofcut.bo", "Clave123!"));
+        token("sesiones.cu04@houseofcut.bo", "Clave123!");
+        String token = token("sesiones.cu04@houseofcut.bo", "Clave123!");
         mockMvc.perform(conToken(get(URL + "/sesiones"), token))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.length()").value(2))
@@ -177,8 +177,8 @@ class PerfilControllerIT extends IntegracionBaseTest {
     @DisplayName("8. Sin el permiso PERFIL_EDITAR (quitado con CU03): 403")
     void sinPermiso() throws Exception {
         String admin = tokenAdmin();
-        crearUsuario(admin, cliente("sinperm.cu04@houseofcut.bo", "Clave123"));
-        String token = token("sinperm.cu04@houseofcut.bo", "Clave123");
+        crearUsuario(admin, cliente("sinperm.cu04@houseofcut.bo", "Clave123!"));
+        String token = token("sinperm.cu04@houseofcut.bo", "Clave123!");
         int idCliente = rolRepository.findByNombre("Cliente").orElseThrow().getIdRol();
         mockMvc.perform(conToken(put("/api/v1/roles/" + idCliente), admin)
                         .content(json(Map.of("nombre", "Cliente", "permisos", List.of()))))

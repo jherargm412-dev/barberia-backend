@@ -89,8 +89,8 @@ class RolControllerIT extends IntegracionBaseTest {
     @DisplayName("3. Recepcionista: 403 en todo CU03; sin token: 401")
     void permisos() throws Exception {
         String admin = tokenAdmin();
-        crearUsuario(admin, recepcionista("recep.cu03@houseofcut.bo", "Clave123"));
-        String recep = token("recep.cu03@houseofcut.bo", "Clave123");
+        crearUsuario(admin, recepcionista("recep.cu03@houseofcut.bo", "Clave123!"));
+        String recep = token("recep.cu03@houseofcut.bo", "Clave123!");
         List<MockHttpServletRequestBuilder> peticiones = List.of(
                 get(URL),
                 get(URL + "/1"),
@@ -155,8 +155,8 @@ class RolControllerIT extends IntegracionBaseTest {
     @DisplayName("7. Editar permisos de Barbero: 200, bitácora ROL_PERMISOS_ACTUALIZAR, efecto inmediato en el usuario")
     void editarPermisos() throws Exception {
         String admin = tokenAdmin();
-        crearUsuario(admin, barbero("barbero.cu03@houseofcut.bo", "Clave123"));
-        String barbero = token("barbero.cu03@houseofcut.bo", "Clave123");
+        crearUsuario(admin, barbero("barbero.cu03@houseofcut.bo", "Clave123!"));
+        String barbero = token("barbero.cu03@houseofcut.bo", "Clave123!");
         mockMvc.perform(conToken(get("/api/v1/clientes"), barbero)).andExpect(status().isForbidden());
 
         int id = idDe("Barbero");
@@ -223,8 +223,8 @@ class RolControllerIT extends IntegracionBaseTest {
     @DisplayName("10. Desactivar rol: 200, bitácora, el usuario pierde sus permisos y CU01 ya no lo ofrece; reactivar")
     void desactivarYActivar() throws Exception {
         String admin = tokenAdmin();
-        crearUsuario(admin, recepcionista("recep2.cu03@houseofcut.bo", "Clave123"));
-        String recep = token("recep2.cu03@houseofcut.bo", "Clave123");
+        crearUsuario(admin, recepcionista("recep2.cu03@houseofcut.bo", "Clave123!"));
+        String recep = token("recep2.cu03@houseofcut.bo", "Clave123!");
         mockMvc.perform(conToken(get("/api/v1/clientes"), recep)).andExpect(status().isOk());
 
         int id = idDe("Recepcionista");
@@ -244,7 +244,7 @@ class RolControllerIT extends IntegracionBaseTest {
         mockMvc.perform(conToken(get(URL).param("activo", "true"), admin))
                 .andExpect(jsonPath("$[*].nombre", not(hasItem("Recepcionista"))));
         mockMvc.perform(conToken(post("/api/v1/usuarios"), admin)
-                        .content(json(recepcionista("recep3.cu03@houseofcut.bo", "Clave123"))))
+                        .content(json(recepcionista("recep3.cu03@houseofcut.bo", "Clave123!"))))
                 .andExpect(status().isBadRequest());
 
         mockMvc.perform(conToken(patch(URL + "/" + id + "/estado"), admin).content(json(Map.of("activo", true))))
@@ -259,14 +259,14 @@ class RolControllerIT extends IntegracionBaseTest {
     void listarSoloActivosParaCu01() throws Exception {
         String admin = tokenAdmin();
         crearRol(admin, "Supervisor", List.of("USUARIO_GESTIONAR"));
-        Map<String, Object> usuario = new HashMap<>(cliente("supervisor.cu03@houseofcut.bo", "Clave123"));
+        Map<String, Object> usuario = new HashMap<>(cliente("supervisor.cu03@houseofcut.bo", "Clave123!"));
         usuario.put("roles", List.of("Supervisor"));
         crearUsuario(admin, usuario);
         mockMvc.perform(conToken(patch(URL + "/" + idDe("Cliente") + "/estado"), admin)
                         .content(json(Map.of("activo", false))))
                 .andExpect(status().isOk());
 
-        String supervisor = token("supervisor.cu03@houseofcut.bo", "Clave123");
+        String supervisor = token("supervisor.cu03@houseofcut.bo", "Clave123!");
         for (String url : new String[]{URL, URL + "?activo=false"}) {
             mockMvc.perform(conToken(get(url), supervisor))
                     .andExpect(status().isOk())

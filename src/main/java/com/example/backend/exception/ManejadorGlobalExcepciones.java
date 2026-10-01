@@ -106,6 +106,11 @@ public class ManejadorGlobalExcepciones {
         return responder(HttpStatus.UNAUTHORIZED, CredencialesInvalidasException.MENSAJE, req, null);
     }
 
+    @ExceptionHandler(CuentaBloqueadaException.class)
+    public ResponseEntity<ErrorApi> cuentaBloqueada(CuentaBloqueadaException ex, HttpServletRequest req) {
+        return responder(HttpStatus.LOCKED, ex.getMessage(), req, null);
+    }
+
     @ExceptionHandler(AccessDeniedException.class)
     public ResponseEntity<ErrorApi> accesoDenegado(AccessDeniedException ex, HttpServletRequest req) {
         return responder(HttpStatus.FORBIDDEN, RestAccessDeniedHandler.mensajePara(req.getRequestURI()), req, null);

@@ -53,7 +53,7 @@ Las rutas **no llevan id**: el usuario siempre sale del token, así que nadie pu
 | R5 | Si el usuario tiene ficha de `cliente`, su nombre y teléfono se sincronizan (igual que CU01). | — | [PROPUESTO] |
 | R6 | Contraseña actual incorrecta → **400** (no 401: un 401 haría que el frontend cierre la sesión). | 400 `La contraseña actual es incorrecta` | [DEFINIDO] |
 | R7 | Nueva ≠ confirmación. | 400 `La confirmación no coincide con la nueva contraseña` | [DEFINIDO] |
-| R8 | La nueva cumple `PasswordPolicy` (hoy: no vacía) y es distinta de la actual. | 400 `La nueva contraseña debe ser distinta de la actual` | [PROPUESTO] |
+| R8 | La nueva cumple `PasswordPolicy` (8+ caracteres, mayúscula, minúscula, número y especial; 05 §5.1) y es distinta de la actual. | 400 `La nueva contraseña debe ser distinta de la actual` | [PROPUESTO] |
 | R9 | El hash se genera con BCrypt; la bitácora nunca guarda la contraseña ni el hash. | — | [DEFINIDO] |
 | R10 | Guardar sin cambios → 200 sin bitácora. | — | [PROPUESTO] |
 | R11 | El token sigue siendo válido tras cambiar la contraseña (no hay lista negra, ver CU02 [PENDIENTE] 05 §5.4). | — | [PENDIENTE] |
