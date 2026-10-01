@@ -13,6 +13,7 @@ import org.springframework.test.web.servlet.request.MockHttpServletRequestBuilde
 import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -103,6 +104,23 @@ class ServicioControllerIT extends IntegracionBaseTest {
                     .andExpect(jsonPath("$[0].precio").exists())
                     .andExpect(jsonPath("$[0].porcentajeComision").doesNotExist());
         }
+    }
+
+    @Test
+    @DisplayName("Rol solo con USUARIO_GESTIONAR (CU17 asigna servicios): 200 en /habilitados, 403 en /servicios")
+    void habilitadosParaGestionDeEmpleados() throws Exception {
+        String admin = tokenAdmin();
+        Map<String, Object> rol = Map.of("nombre", "Supervisor", "permisos", List.of("USUARIO_GESTIONAR"));
+        mockMvc.perform(conToken(post("/api/v1/roles"), admin).content(json(rol))).andExpect(status().isCreated());
+        Map<String, Object> usuario = new HashMap<>(cliente("supervisor.cu08@houseofcut.bo", "Clave123"));
+        usuario.put("roles", List.of("Supervisor"));
+        crearUsuario(admin, usuario);
+
+        String token = token("supervisor.cu08@houseofcut.bo", "Clave123");
+        mockMvc.perform(conToken(get(URL + "/habilitados"), token))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$[0].porcentajeComision").doesNotExist());
+        mockMvc.perform(conToken(get(URL), token)).andExpect(status().isForbidden());
     }
 
     @Test

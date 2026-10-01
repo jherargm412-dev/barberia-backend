@@ -9,6 +9,7 @@ import com.example.backend.security.UsuarioAutenticado;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.security.access.prepost.PreAuthorize;
+import org.springframework.security.core.Authentication;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
 
@@ -26,11 +27,16 @@ public class RolController {
 
     private final RolService rolService;
 
-    /** Paso 1: listar. Sin {@code activo} devuelve todos; CU01 envía {@code activo=true}. */
+    /**
+     * Paso 1: listar. Con ROL_ASIGNAR (CU03), sin {@code activo} devuelve todos. Quien solo tiene
+     * USUARIO_GESTIONAR (CU01) recibe siempre los activos, como antes de CU03: son los que puede asignar.
+     */
     @GetMapping
     @PreAuthorize("hasAuthority('ROL_ASIGNAR') or hasAuthority('USUARIO_GESTIONAR')")
-    public List<RolResponse> listar(@RequestParam(required = false) Boolean activo) {
-        return rolService.listar(activo);
+    public List<RolResponse> listar(@RequestParam(required = false) Boolean activo, Authentication autenticacion) {
+        boolean gestionaRoles = autenticacion.getAuthorities().stream()
+                .anyMatch(a -> "ROL_ASIGNAR".equals(a.getAuthority()));
+        return rolService.listar(gestionaRoles ? activo : Boolean.TRUE);
     }
 
     /** Consultar para precargar el formulario de editar (datos + permisos otorgados). */

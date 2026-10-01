@@ -19,6 +19,7 @@ import com.example.backend.modulos.servicios_reservas.repository.ServicioReposit
 import com.example.backend.security.PasswordPolicy;
 import com.example.backend.security.UsuarioAutenticado;
 import lombok.RequiredArgsConstructor;
+import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
@@ -55,6 +56,8 @@ public class EmpleadoService {
     public static final String MSG_SOLO_BARBEROS = "Solo se pueden asignar servicios a empleados con rol Barbero";
     public static final String MSG_DESVINCULADO = "El empleado está desvinculado; reactívelo antes de asignarle servicios";
     public static final String MSG_SERVICIO_INVALIDO = "Uno o más servicios no existen o están inhabilitados";
+    public static final String MSG_SERVICIOS_CONCURRENTES =
+            "Los servicios del empleado se modificaron al mismo tiempo desde otra sesión; vuelva a intentarlo";
     public static final String MSG_AUTODESVINCULAR = "No puede desvincularse a sí mismo";
     public static final String MSG_ULTIMO_ADMIN = "No se puede desvincular al último administrador activo";
 
@@ -261,7 +264,12 @@ public class EmpleadoService {
             return mapper.aResponse(empleado, relaciones); // sin cambios: sin bitácora
         }
 
-        empleadoServicioRepository.saveAll(relaciones);
+        try {
+            // Flush aquí para que un choque de PK (otra petición insertó el mismo par a la vez) salga como 409.
+            empleadoServicioRepository.saveAllAndFlush(relaciones);
+        } catch (DataIntegrityViolationException ex) {
+            throw new ConflictoException(MSG_SERVICIOS_CONCURRENTES);
+        }
         List<String> cambios = new ArrayList<>();
         agregados.stream().sorted().forEach(n -> cambios.add("+" + n));
         quitados.stream().sorted().forEach(n -> cambios.add("-" + n));
