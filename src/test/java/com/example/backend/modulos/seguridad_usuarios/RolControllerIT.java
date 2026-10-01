@@ -255,6 +255,31 @@ class RolControllerIT extends IntegracionBaseTest {
     }
 
     @Test
+    @DisplayName("10b. Solo USUARIO_GESTIONAR (CU01): el listado devuelve siempre los activos, aun sin ?activo")
+    void listarSoloActivosParaCu01() throws Exception {
+        String admin = tokenAdmin();
+        crearRol(admin, "Supervisor", List.of("USUARIO_GESTIONAR"));
+        Map<String, Object> usuario = new HashMap<>(cliente("supervisor.cu03@houseofcut.bo", "Clave123"));
+        usuario.put("roles", List.of("Supervisor"));
+        crearUsuario(admin, usuario);
+        mockMvc.perform(conToken(patch(URL + "/" + idDe("Cliente") + "/estado"), admin)
+                        .content(json(Map.of("activo", false))))
+                .andExpect(status().isOk());
+
+        String supervisor = token("supervisor.cu03@houseofcut.bo", "Clave123");
+        for (String url : new String[]{URL, URL + "?activo=false"}) {
+            mockMvc.perform(conToken(get(url), supervisor))
+                    .andExpect(status().isOk())
+                    .andExpect(jsonPath("$[*].nombre", not(hasItem("Cliente"))))
+                    .andExpect(jsonPath("$[*].activo", not(hasItem(false))));
+        }
+        // Con ROL_ASIGNAR (CU03) sin ?activo se siguen viendo todos, también los inactivos.
+        mockMvc.perform(conToken(get(URL), admin))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$[*].nombre", hasItem("Cliente")));
+    }
+
+    @Test
     @DisplayName("11. Estado ausente: 400; rol inexistente: 404; DELETE: 405")
     void erroresVarios() throws Exception {
         String admin = tokenAdmin();

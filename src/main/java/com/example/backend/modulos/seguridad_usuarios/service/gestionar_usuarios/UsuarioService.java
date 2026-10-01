@@ -72,7 +72,7 @@ public class UsuarioService {
         if (usuarioRepository.existsByCorreo(correo)) {
             throw correoRepetido();
         }
-        Set<Rol> roles = resolverRoles(peticion.roles());
+        Set<Rol> roles = resolverRoles(peticion.roles(), Set.of());
         boolean esEmpleado = roles.stream().anyMatch(Rol::esRolDeEmpleado);
         boolean esCliente = roles.stream().anyMatch(r -> Rol.CLIENTE.equals(r.getNombre()));
         if (esEmpleado) {
@@ -114,7 +114,7 @@ public class UsuarioService {
         if (usuarioRepository.existsByCorreoAndIdUsuarioNot(correo, id)) {
             throw correoRepetido();
         }
-        Set<Rol> nuevosRoles = resolverRoles(peticion.roles());
+        Set<Rol> nuevosRoles = resolverRoles(peticion.roles(), usuario.getRoles());
         boolean seguiraSiendoAdmin = nuevosRoles.stream().anyMatch(r -> Rol.ADMINISTRADOR.equals(r.getNombre()));
         if (usuario.tieneRol(Rol.ADMINISTRADOR) && !seguiraSiendoAdmin) {
             if (id.equals(actor.idUsuario())) {
@@ -251,8 +251,13 @@ public class UsuarioService {
         return new ConflictoException("El correo ya está registrado", Map.of("correo", "ya registrado"));
     }
 
-    /** Todos los nombres deben corresponder a roles existentes y activos; mínimo uno. */
-    private Set<Rol> resolverRoles(List<String> nombres) {
+    /**
+     * Todos los nombres deben corresponder a roles existentes; mínimo uno. Un rol inactivo solo se acepta
+     * si el usuario ya lo tenía (CU03 R7: desactivar un rol no se lo quita a sus usuarios), así se puede
+     * seguir editando a esos usuarios sin poder asignar el rol inactivo a nadie más.
+     */
+    private Set<Rol> resolverRoles(List<String> nombres, Set<Rol> rolesActuales) {
+        Set<Integer> idsActuales = rolesActuales.stream().map(Rol::getIdRol).collect(Collectors.toSet());
         Set<String> pedidos = nombres == null ? Set.of() : nombres.stream()
                 .filter(n -> n != null && !n.isBlank())
                 .map(n -> n.trim().toLowerCase(Locale.ROOT))
@@ -261,7 +266,7 @@ public class UsuarioService {
             throw rolInvalido();
         }
         List<Rol> encontrados = rolRepository.findByNombreIgnoreCaseIn(pedidos);
-        if (encontrados.size() != pedidos.size() || encontrados.stream().anyMatch(r -> !r.isActivo())) {
+        if (encontrados.size() != pedidos.size() || encontrados.stream().anyMatch(r -> !r.isActivo() && !idsActuales.contains(r.getIdRol()))) {
             throw rolInvalido();
         }
         return new LinkedHashSet<>(encontrados);

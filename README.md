@@ -69,21 +69,33 @@ V3__descripcion_corta.sql
 - Antes de crear una migración, haz `git pull` para no repetir el número de versión
   de un compañero.
 
-## Estructura
+## 📁 Estructura del Repositorio
 
 ```
-com.example.backend/
-  exception/                 GLOBAL: excepciones, ManejadorGlobalExcepciones, ErrorApi
-  security/                  GLOBAL: SecurityConfig, JWT, UsuarioAutenticado, permisos
-  comun/                     GLOBAL: lo que comparten todos los módulos (PaginaRespuesta)
-  modulos/                   un paquete por módulo (mismos nombres que en el frontend)
-    seguridad_usuarios/
-    gestion_clientes/
-    gestion_empleados/
-    servicios_reservas/
-    ventas_caja/
-    inventario_compras/
-    reportes/
+barberia-backend/
+│
+├── src/main/java/.../backend/
+│   ├── security/               # JWT, login y permisos
+│   ├── exception/              # Errores y manejador global
+│   ├── comun/                  # Clases compartidas (PaginaRespuesta)
+│   └── modulos/
+│       ├── seguridad_usuarios/ # CU01, CU02, CU05 (Usuarios, Login, Bitácora)
+│       ├── gestion_clientes/   # CU06 (Clientes)
+│       ├── gestion_empleados/  # Por implementar
+│       ├── servicios_reservas/ # CU08 (Catálogo de servicios, Reservas)
+│       ├── ventas_caja/        # Por implementar
+│       ├── inventario_compras/ # Por implementar
+│       └── reportes/           # Por implementar
+│
+├── src/main/resources/
+│   ├── application.properties  # Configuración (lee el .env)
+│   └── db/migration/           # Migraciones de BD con Flyway
+│
+├── src/test/                   # Pruebas
+├── funcionalidades/            # Documentación de cada caso de uso
+├── docs/                       # Guías (Flyway)
+├── .env.example                # Plantilla de variables de entorno
+└── build.gradle                # Dependencias del proyecto
 ```
 
 Lo **global** (fuera de los módulos) sirve a toda la app: cualquier módulo puede lanzar
