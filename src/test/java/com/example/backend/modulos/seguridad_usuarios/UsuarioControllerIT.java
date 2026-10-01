@@ -128,6 +128,32 @@ class UsuarioControllerIT extends IntegracionBaseTest {
     }
 
     @Test
+    @DisplayName("4c. Rol desactivado (CU03): quien ya lo tenía se puede editar; a otro no se le puede asignar")
+    void rolInactivoQueYaTenia() throws Exception {
+        String admin = tokenAdmin();
+        int conRol = crearUsuario(admin, cliente("yatenia@houseofcut.bo", "Clave123"));
+        int sinRol = crearUsuario(admin, barbero("notenia@houseofcut.bo", "Clave123"));
+        var rol = rolRepository.findByNombre("Cliente").orElseThrow();
+        rol.setActivo(false);
+        rolRepository.saveAndFlush(rol);
+
+        Map<String, Object> soloTelefono = Map.of(
+                "nombre", "Cliente Prueba", "correo", "yatenia@houseofcut.bo",
+                "telefono", "70000001", "roles", List.of("Cliente"));
+        mockMvc.perform(conToken(put("/api/v1/usuarios/" + conRol), admin).content(json(soloTelefono)))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.telefono").value("70000001"))
+                .andExpect(jsonPath("$.roles[0].nombre").value("Cliente"));
+
+        Map<String, Object> agregarInactivo = new HashMap<>(barbero("notenia@houseofcut.bo", "Clave123"));
+        agregarInactivo.remove("contrasena");
+        agregarInactivo.put("roles", List.of("Barbero", "Cliente"));
+        mockMvc.perform(conToken(put("/api/v1/usuarios/" + sinRol), admin).content(json(agregarInactivo)))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.message").value("Debe asignar al menos un rol válido"));
+    }
+
+    @Test
     @DisplayName("5. Barbero sin empleado.tipoContrato: 400")
     void barberoSinTipoContrato() throws Exception {
         Map<String, Object> cuerpo = new HashMap<>(barbero("sincontrato@houseofcut.bo", "Clave123"));
