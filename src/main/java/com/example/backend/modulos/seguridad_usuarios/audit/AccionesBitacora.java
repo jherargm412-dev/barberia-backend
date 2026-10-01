@@ -12,6 +12,17 @@ public final class AccionesBitacora {
     public static final String USUARIO_ACTIVAR = "USUARIO_ACTIVAR";
     public static final String INICIO_SESION = "INICIO_SESION";
     public static final String CIERRE_SESION = "CIERRE_SESION";
+    // CU04 Configurar Perfil Personal
+    public static final String PERFIL_ACTUALIZAR = "PERFIL_ACTUALIZAR";
+    public static final String PERFIL_CAMBIAR_CONTRASENA = "PERFIL_CAMBIAR_CONTRASENA";
+    // CU03 Gestionar Roles y Permisos
+    public static final String ROL_CREAR = "ROL_CREAR";
+    public static final String ROL_ACTUALIZAR = "ROL_ACTUALIZAR";
+    public static final String ROL_PERMISOS_ACTUALIZAR = "ROL_PERMISOS_ACTUALIZAR";
+    public static final String ROL_DESACTIVAR = "ROL_DESACTIVAR";
+    public static final String ROL_ACTIVAR = "ROL_ACTIVAR";
     public static final String TABLA_USUARIO = "usuario";
     public static final String TABLA_ROL_USUARIO = "rol_usuario";
+    public static final String TABLA_ROL = "rol";
+    public static final String TABLA_ROL_PERMISO = "rol_permiso";
 }
