@@ -55,6 +55,8 @@ public class SecurityConfig {
                         // CU01/CU17: aceptar la invitación por correo, sin sesión.
                         .requestMatchers(HttpMethod.GET, "/api/v1/auth/invitacion").permitAll()
                         .requestMatchers(HttpMethod.POST, "/api/v1/auth/invitacion").permitAll()
+                        // Health check de Railway: solo responde UP/DOWN, sin detalles.
+                        .requestMatchers(HttpMethod.GET, "/actuator/health").permitAll()
                         .requestMatchers(HttpMethod.OPTIONS, "/**").permitAll()
                         .anyRequest().authenticated())
                 .addFilterBefore(filtroJwt, UsernamePasswordAuthenticationFilter.class);
