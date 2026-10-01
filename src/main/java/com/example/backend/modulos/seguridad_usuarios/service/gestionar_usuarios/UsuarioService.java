@@ -180,6 +180,7 @@ public class UsuarioService {
         Usuario usuario = buscar(id);
         validarContrasena(contrasenaNueva);
         usuario.setContrasena(passwordEncoder.encode(contrasenaNueva));
+        usuario.desbloquear(); // 05 §5.2: el restablecimiento por el administrador levanta el bloqueo
         usuarioRepository.save(usuario);
         bitacoraService.registrar(referenciaActor(actor), AccionesBitacora.USUARIO_CAMBIAR_CONTRASENA,
                 AccionesBitacora.TABLA_USUARIO, "Restablecimiento de contraseña de " + usuario.getCorreo(),

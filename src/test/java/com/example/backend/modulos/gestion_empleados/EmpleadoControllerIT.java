@@ -46,7 +46,7 @@ class EmpleadoControllerIT extends IntegracionBaseTest {
         Map<String, Object> cuerpo = new HashMap<>();
         cuerpo.put("nombre", "Carlos Barbero");
         cuerpo.put("correo", correo);
-        cuerpo.put("contrasena", "Clave123");
+        cuerpo.put("contrasena", "Clave123!");
         cuerpo.put("telefono", "71234567");
         cuerpo.put("especialidad", "Degradados");
         cuerpo.put("tipoContrato", "COMISIONISTA");
@@ -81,10 +81,10 @@ class EmpleadoControllerIT extends IntegracionBaseTest {
                 .andExpect(jsonPath("$.empleado.servicios.length()").value(0))
                 .andExpect(jsonPath("$.empleado.contrasena").doesNotExist());
 
-        assertThat(loginResultado("carlos.b@houseofcut.bo", "Clave123").getResponse().getStatus()).isEqualTo(200);
+        assertThat(loginResultado("carlos.b@houseofcut.bo", "Clave123!").getResponse().getStatus()).isEqualTo(200);
         Bitacora b = bitacoraRepository.findByAccionOrderByIdBitacoraDesc("EMPLEADO_CREAR").getFirst();
         assertThat(b.getTablaAfectada()).isEqualTo("empleado");
-        assertThat(b.getDatosNuevos()).contains("Degradados").doesNotContain("Clave123");
+        assertThat(b.getDatosNuevos()).contains("Degradados").doesNotContain("Clave123!");
     }
 
     @Test
@@ -142,7 +142,7 @@ class EmpleadoControllerIT extends IntegracionBaseTest {
     void listar() throws Exception {
         String admin = tokenAdmin();
         registrar(admin, nuevoBarbero("lista.cu17@houseofcut.bo"));
-        crearUsuario(admin, cliente("cliente.cu17@houseofcut.bo", "Clave123")); // no es empleado
+        crearUsuario(admin, cliente("cliente.cu17@houseofcut.bo", "Clave123!")); // no es empleado
 
         mockMvc.perform(conToken(get(URL), admin))
                 .andExpect(status().isOk())
@@ -270,7 +270,7 @@ class EmpleadoControllerIT extends IntegracionBaseTest {
         mockMvc.perform(conToken(put(URL + "/" + id + "/servicios"), admin)
                         .content(json(Map.of("servicios", List.of(idServicio("Corte Clásico"))))))
                 .andExpect(status().isOk());
-        String tokenBarbero = token("baja.cu17@houseofcut.bo", "Clave123");
+        String tokenBarbero = token("baja.cu17@houseofcut.bo", "Clave123!");
 
         for (int i = 0; i < 2; i++) {
             mockMvc.perform(conToken(patch(URL + "/" + id + "/desvincular"), admin))
@@ -284,7 +284,7 @@ class EmpleadoControllerIT extends IntegracionBaseTest {
         assertThat(usuario.isActivo()).isFalse();
         assertThat(empleadoRepository.findById(id)).isPresent();
         assertThat(empleadoServicioRepository.findByEmpleado_IdEmpleado(id)).hasSize(1);
-        assertThat(loginResultado("baja.cu17@houseofcut.bo", "Clave123").getResponse().getStatus()).isEqualTo(401);
+        assertThat(loginResultado("baja.cu17@houseofcut.bo", "Clave123!").getResponse().getStatus()).isEqualTo(401);
         mockMvc.perform(conToken(get("/api/v1/perfil"), tokenBarbero)).andExpect(status().isUnauthorized());
 
         // No se le pueden asignar servicios mientras está desvinculado.
@@ -296,7 +296,7 @@ class EmpleadoControllerIT extends IntegracionBaseTest {
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.empleado.estado").value("ACTIVO"))
                 .andExpect(jsonPath("$.empleado.servicios.length()").value(1));
-        assertThat(loginResultado("baja.cu17@houseofcut.bo", "Clave123").getResponse().getStatus()).isEqualTo(200);
+        assertThat(loginResultado("baja.cu17@houseofcut.bo", "Clave123!").getResponse().getStatus()).isEqualTo(200);
     }
 
     @Test
@@ -311,9 +311,9 @@ class EmpleadoControllerIT extends IntegracionBaseTest {
                 .andExpect(status().isMethodNotAllowed());
 
         registrar(admin, nuevoBarbero("b403.cu17@houseofcut.bo"));
-        crearUsuario(admin, recepcionista("r403.cu17@houseofcut.bo", "Clave123"));
+        crearUsuario(admin, recepcionista("r403.cu17@houseofcut.bo", "Clave123!"));
         for (String correo : List.of("b403.cu17@houseofcut.bo", "r403.cu17@houseofcut.bo")) {
-            String token = token(correo, "Clave123");
+            String token = token(correo, "Clave123!");
             mockMvc.perform(conToken(get(URL), token)).andExpect(status().isForbidden());
             mockMvc.perform(conToken(post(URL), token).content(json(nuevoBarbero("z.cu17@houseofcut.bo"))))
                     .andExpect(status().isForbidden());

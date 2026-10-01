@@ -25,8 +25,8 @@ class ClienteControllerIT extends IntegracionBaseTest {
     @Test
     void recepcionistaGestionaClienteSinPerderHistorial() throws Exception {
         String admin = tokenAdmin();
-        crearUsuario(admin, recepcionista("recep.cu06@houseofcut.bo", "Clave123"));
-        String token = token("recep.cu06@houseofcut.bo", "Clave123");
+        crearUsuario(admin, recepcionista("recep.cu06@houseofcut.bo", "Clave123!"));
+        String token = token("recep.cu06@houseofcut.bo", "Clave123!");
         long antes = bitacoraRepository.countByAccion("CLIENTE_CREAR");
         MvcResult creado = mockMvc.perform(autorizado(post(URL), token)
                         .content(json(Map.of("nombre", "  Ana Pérez  ", "telefono", "71234567"))))
@@ -56,8 +56,8 @@ class ClienteControllerIT extends IntegracionBaseTest {
     @Test
     void validaCamposYPermisos() throws Exception {
         String admin = tokenAdmin();
-        crearUsuario(admin, barbero("barbero.cu06@houseofcut.bo", "Clave123"));
-        String barbero = token("barbero.cu06@houseofcut.bo", "Clave123");
+        crearUsuario(admin, barbero("barbero.cu06@houseofcut.bo", "Clave123!"));
+        String barbero = token("barbero.cu06@houseofcut.bo", "Clave123!");
         mockMvc.perform(autorizado(post(URL), admin).content(json(Map.of("nombre", "  "))))
                 .andExpect(status().isBadRequest()).andExpect(jsonPath("$.campos.nombre").exists());
         mockMvc.perform(autorizado(post(URL), admin)

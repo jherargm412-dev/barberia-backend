@@ -102,7 +102,7 @@ Se registra en `bitacora` cada operación de escritura de CU01. Consultar no se 
 
 - La entrega dice que el administrador "actualiza los datos **o la contraseña** de un usuario que los olvidó" (CU01, descripción) y que el formulario de registro incluye "credenciales". Es decir: **el administrador define la contraseña**, tanto al registrar como al restablecerla. No hay generación automática ni envío por correo.
 - No hay envío de correo de ningún tipo en el alcance de CU01. [DEFINIDO por omisión]
-- **Requisitos de complejidad de la contraseña: [PENDIENTE].** CU04 menciona "la contraseña no cumple requisitos", pero los requisitos no están definidos. Dejar la validación como un componente único (`PasswordPolicy`) que hoy solo exige "no vacía", para poder endurecerla después sin tocar los controladores. Ver `05-reglas-negocio-CU02.md` §5.
+- **Requisitos de complejidad de la contraseña: [DEFINIDO].** CU04 menciona "la contraseña no cumple requisitos" sin detallarlos; el equipo los fijó en `05-reglas-negocio-CU02.md` §5.1: mínimo 8 caracteres con mayúscula, minúscula, número y carácter especial, validados por el componente único `PasswordPolicy`.
 - Forzar cambio de contraseña en el primer login: **[PENDIENTE]**, no implementar aún. Si en el futuro se decide, requerirá una columna adicional (p. ej. `debe_cambiar_contrasena`) que hoy no existe en el DDL.
 
 ---

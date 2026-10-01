@@ -3,7 +3,7 @@ package com.example.backend.security;
 import java.util.List;
 
 /**
- * Punto de extensión [PENDIENTE] 05 §5.1: política de contraseña.
+ * Política de contraseña (05 §5.1). Implementación actual: {@link PoliticaContrasenaSegura}.
  * Cambiar la política = cambiar la implementación, sin tocar controladores ni servicios.
  */
 public interface PasswordPolicy {
