@@ -69,6 +69,39 @@ V3__descripcion_corta.sql
 - Antes de crear una migración, haz `git pull` para no repetir el número de versión
   de un compañero.
 
+## Despliegue (Railway)
+
+Railway construye la imagen con el `Dockerfile` cada vez que se hace merge a `main`.
+**El `Dockerfile` no corre las pruebas**: corre `./gradlew test` antes de aprobar un Pull Request.
+
+### Probar el despliegue en tu máquina (Docker Desktop)
+
+```bash
+docker compose up --build     # PostgreSQL + backend en perfil prod
+docker compose down -v        # apagar y borrar la base de prueba
+```
+
+Usa `JWT_SECRET` y `APP_SEED_ADMIN_*` de tu `.env` y una base propia dentro de Docker
+(no toca tu PostgreSQL local). Comprueba que `http://localhost:8080/actuator/health` responda `UP`.
+
+### Variables del servicio en Railway
+
+| Variable | Valor |
+|---|---|
+| `SPRING_PROFILES_ACTIVE` | `prod` |
+| `DB_URL` | `jdbc:postgresql://${{Postgres.PGHOST}}:${{Postgres.PGPORT}}/${{Postgres.PGDATABASE}}` |
+| `DB_USERNAME` | `${{Postgres.PGUSER}}` |
+| `DB_PASSWORD` | `${{Postgres.PGPASSWORD}}` |
+| `JWT_SECRET` | Uno nuevo, solo para producción (`openssl rand -base64 48`) |
+| `APP_SEED_ADMIN_EMAIL` / `APP_SEED_ADMIN_PASSWORD` / `APP_SEED_ADMIN_NOMBRE` | El administrador real |
+| `CORS_ORIGIN` | URL del frontend, sin `/` al final |
+| `APP_FRONTEND_URL` | URL del frontend (enlaces de invitación) |
+
+`PORT` lo pone Railway solo. En **Settings → Healthcheck Path** va `/actuator/health`.
+
+**Correo:** Railway (planes Free y Hobby) bloquea SMTP, así que por ahora `MAIL_USERNAME` va
+**vacía**: los correos se escriben en el log del servicio. Se reemplazará por una API de correo (Brevo).
+
 ## 📁 Estructura del Repositorio
 
 ```
@@ -94,6 +127,8 @@ barberia-backend/
 ├── src/test/                   # Pruebas
 ├── funcionalidades/            # Documentación de cada caso de uso
 ├── docs/                       # Guías (Flyway)
+├── Dockerfile                  # Imagen para Railway
+├── docker-compose.yml          # Prueba local del despliegue
 ├── .env.example                # Plantilla de variables de entorno
 └── build.gradle                # Dependencias del proyecto
 ```
