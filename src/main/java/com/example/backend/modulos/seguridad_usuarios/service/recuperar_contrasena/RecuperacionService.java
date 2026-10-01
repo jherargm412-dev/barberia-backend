@@ -11,6 +11,7 @@ import com.example.backend.modulos.seguridad_usuarios.entity.CodigoRecuperacion;
 import com.example.backend.modulos.seguridad_usuarios.entity.Usuario;
 import com.example.backend.modulos.seguridad_usuarios.repository.CodigoRecuperacionRepository;
 import com.example.backend.modulos.seguridad_usuarios.repository.UsuarioRepository;
+import com.example.backend.modulos.seguridad_usuarios.service.aceptar_invitacion.InvitacionService;
 import com.example.backend.modulos.seguridad_usuarios.util.Correos;
 import com.example.backend.security.PasswordPolicy;
 import lombok.extern.slf4j.Slf4j;
@@ -50,6 +51,7 @@ public class RecuperacionService {
     private final PasswordPolicy passwordPolicy;
     private final CorreoService correoService;
     private final BitacoraService bitacoraService;
+    private final InvitacionService invitacionService;
     private final int vigenciaMinutos;
     private final int maxIntentos;
     private final int maxSolicitudes;
@@ -58,6 +60,7 @@ public class RecuperacionService {
     public RecuperacionService(UsuarioRepository usuarioRepository, CodigoRecuperacionRepository codigoRepository,
                                PasswordEncoder passwordEncoder, PasswordPolicy passwordPolicy,
                                CorreoService correoService, BitacoraService bitacoraService,
+                               InvitacionService invitacionService,
                                @Value("${app.recuperacion.vigencia-minutos:5}") int vigenciaMinutos,
                                @Value("${app.recuperacion.max-intentos:3}") int maxIntentos,
                                @Value("${app.recuperacion.max-solicitudes:3}") int maxSolicitudes,
@@ -68,6 +71,7 @@ public class RecuperacionService {
         this.passwordPolicy = passwordPolicy;
         this.correoService = correoService;
         this.bitacoraService = bitacoraService;
+        this.invitacionService = invitacionService;
         this.vigenciaMinutos = vigenciaMinutos;
         this.maxIntentos = maxIntentos;
         this.maxSolicitudes = maxSolicitudes;
@@ -99,7 +103,7 @@ public class RecuperacionService {
         }
 
         String codigo = "%06d".formatted(ALEATORIO.nextInt(1_000_000));
-        codigoRepository.anularPendientes(usuario.getIdUsuario());
+        codigoRepository.findByUsuario_IdUsuarioAndUsadoFalse(usuario.getIdUsuario()).forEach(c -> c.setUsado(true));
         codigoRepository.save(new CodigoRecuperacion(usuario, passwordEncoder.encode(codigo), ahora,
                 ahora.plusMinutes(vigenciaMinutos)));
         bitacoraService.registrar(usuario, AccionesBitacora.RECUPERAR_CONTRASENA_SOLICITAR,
@@ -153,6 +157,7 @@ public class RecuperacionService {
         codigo.setUsado(true);
         usuario.setContrasena(passwordEncoder.encode(peticion.contrasenaNueva()));
         usuario.desbloquear(); // 05 §5.2: recuperar la contraseña también levanta un bloqueo por intentos
+        invitacionService.anularPendientes(usuario.getIdUsuario()); // ya eligió contraseña: la invitación sobra
         bitacoraService.registrar(usuario, AccionesBitacora.RECUPERAR_CONTRASENA, AccionesBitacora.TABLA_USUARIO,
                 "Contraseña recuperada con código enviado por correo", null, Map.of("idUsuario", usuario.getIdUsuario()));
         return new RespuestaRecuperacion(MSG_RECUPERADA);

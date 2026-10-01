@@ -8,6 +8,7 @@ import com.example.backend.exception.RecursoNoEncontradoException;
 import com.example.backend.exception.ValidacionNegocioException;
 import com.example.backend.modulos.seguridad_usuarios.mapper.gestionar_usuarios.UsuarioMapper;
 import com.example.backend.modulos.seguridad_usuarios.repository.*;
+import com.example.backend.modulos.seguridad_usuarios.service.aceptar_invitacion.InvitacionService;
 import com.example.backend.security.PasswordPolicy;
 import com.example.backend.security.UsuarioAutenticado;
 import com.example.backend.comun.PaginaRespuesta;
@@ -42,6 +43,7 @@ public class UsuarioService {
     private final PasswordEncoder passwordEncoder;
     private final PasswordPolicy passwordPolicy;
     private final BitacoraService bitacoraService;
+    private final InvitacionService invitacionService;
     private final UsuarioMapper mapper;
 
     // ---------- Consultas (no se registran en bitácora) ----------
@@ -65,9 +67,13 @@ public class UsuarioService {
 
     // ---------- Registrar (CU01 pasos 3–7) ----------
 
+    /** Con {@code enviarInvitacion} no se pide contraseña: se envía un enlace para que el usuario la elija. */
     @Transactional
-    public UsuarioDetalle registrar(CrearUsuarioRequest peticion, UsuarioAutenticado actor) {
-        validarContrasena(peticion.contrasena());
+    public RespuestaRegistro registrar(CrearUsuarioRequest peticion, UsuarioAutenticado actor) {
+        boolean invitar = Boolean.TRUE.equals(peticion.enviarInvitacion());
+        if (!invitar) {
+            validarContrasena(peticion.contrasena());
+        }
         String correo = Correos.normalizar(peticion.correo());
         if (usuarioRepository.existsByCorreo(correo)) {
             throw correoRepetido();
@@ -82,7 +88,9 @@ public class UsuarioService {
         Usuario usuario = new Usuario();
         usuario.setNombre(peticion.nombre().trim());
         usuario.setCorreo(correo);
-        usuario.setContrasena(passwordEncoder.encode(peticion.contrasena()));
+        usuario.setContrasena(invitar
+                ? invitacionService.contrasenaInutilizable()
+                : passwordEncoder.encode(peticion.contrasena()));
         usuario.setTelefono(limpiar(peticion.telefono()));
         usuario.setFechaNacimiento(peticion.fechaNacimiento());
         usuario.setEstado(EstadoUsuario.ACTIVO);
@@ -99,7 +107,13 @@ public class UsuarioService {
         bitacoraService.registrar(referenciaActor(actor), AccionesBitacora.USUARIO_CREAR, AccionesBitacora.TABLA_USUARIO,
                 "Registro de usuario " + correo + " con rol " + nombresDe(roles),
                 null, snapshot(usuario));
-        return mapper.aDetalle(usuario);
+        String mensaje = RespuestaRegistro.MENSAJE_REGISTRO;
+        if (invitar) {
+            mensaje = invitacionService.invitar(usuario, referenciaActor(actor))
+                    ? RespuestaRegistro.MENSAJE_INVITACION_ENVIADA
+                    : RespuestaRegistro.MENSAJE_INVITACION_FALLIDA;
+        }
+        return new RespuestaRegistro(mensaje, mapper.aDetalle(usuario));
     }
 
     // ---------- Actualizar datos y roles (CU01 3b) ----------
@@ -182,9 +196,18 @@ public class UsuarioService {
         usuario.setContrasena(passwordEncoder.encode(contrasenaNueva));
         usuario.desbloquear(); // 05 §5.2: el restablecimiento por el administrador levanta el bloqueo
         usuarioRepository.save(usuario);
+        invitacionService.anularPendientes(id); // ya tiene contraseña: la invitación sobra
         bitacoraService.registrar(referenciaActor(actor), AccionesBitacora.USUARIO_CAMBIAR_CONTRASENA,
                 AccionesBitacora.TABLA_USUARIO, "Restablecimiento de contraseña de " + usuario.getCorreo(),
                 null, Map.of("idUsuario", id));
+    }
+
+    /** Reenvía la invitación por correo (anula el enlace anterior). 409 si ya activó su cuenta. */
+    @Transactional
+    public UsuarioDetalle reenviarInvitacion(Integer id, UsuarioAutenticado actor) {
+        Usuario usuario = buscar(id);
+        invitacionService.reenviar(usuario, referenciaActor(actor));
+        return mapper.aDetalle(usuario);
     }
 
     // ---------- Deshabilitar (CU01 3c) y reactivar ----------

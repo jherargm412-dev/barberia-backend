@@ -18,6 +18,10 @@ public final class AccionesBitacora {
     public static final String RECUPERAR_CONTRASENA_SOLICITAR = "RECUPERAR_CONTRASENA_SOLICITAR";
     public static final String RECUPERAR_CONTRASENA = "RECUPERAR_CONTRASENA";
     public static final String TABLA_CODIGO_RECUPERACION = "codigo_recuperacion";
+    /** CU01/CU17: invitación por correo enviada (o reenviada) / aceptada por el trabajador. */
+    public static final String INVITACION_ENVIAR = "INVITACION_ENVIAR";
+    public static final String INVITACION_ACEPTAR = "INVITACION_ACEPTAR";
+    public static final String TABLA_INVITACION = "invitacion";
     // CU04 Configurar Perfil Personal
     public static final String PERFIL_ACTUALIZAR = "PERFIL_ACTUALIZAR";
     public static final String PERFIL_CAMBIAR_CONTRASENA = "PERFIL_CAMBIAR_CONTRASENA";

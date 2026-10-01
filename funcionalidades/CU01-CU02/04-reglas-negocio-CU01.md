@@ -98,10 +98,16 @@ Se registra en `bitacora` cada operación de escritura de CU01. Consultar no se 
 
 ---
 
-## 7. Contraseña inicial — [DEFINIDO] parcialmente, resto [PROPUESTO]
+## 7. Contraseña inicial — [DEFINIDO]
 
-- La entrega dice que el administrador "actualiza los datos **o la contraseña** de un usuario que los olvidó" (CU01, descripción) y que el formulario de registro incluye "credenciales". Es decir: **el administrador define la contraseña**, tanto al registrar como al restablecerla. No hay generación automática ni envío por correo.
-- No hay envío de correo de ningún tipo en el alcance de CU01. [DEFINIDO por omisión]
+- La entrega dice que el administrador "actualiza los datos **o la contraseña** de un usuario que los olvidó" (CU01, descripción) y que el formulario de registro incluye "credenciales". Se mantiene: el administrador **puede** definir la contraseña al registrar y al restablecerla.
+- **Invitación por correo [DEFINIDO por el equipo]:** al registrar (CU01 `POST /usuarios` y CU17 `POST /empleados`) con `"enviarInvitacion": true` no se pide contraseña. El usuario se crea ACTIVO con una contraseña aleatoria que nadie conoce y le llega un correo con un enlace `{APP_FRONTEND_URL}/activar?token=…` para elegir la suya (cumpliendo §5.1 de 05).
+  - El enlace dura **48 horas** (`app.invitacion.vigencia-horas`) y es de **un solo uso**. Se guarda solo el hash SHA-256 del token (tabla `invitacion`, migración V10).
+  - Endpoints públicos: `GET /api/v1/auth/invitacion?token=` (valida y devuelve nombre y correo) y `POST /api/v1/auth/invitacion` `{token, contrasena, confirmacion}`.
+  - El detalle de usuario incluye `invitacion: {expiraEn, vencida}` mientras no la acepte. `POST /usuarios/{id}/invitacion` la **reenvía** (anula el enlace anterior); 409 si ya activó su cuenta.
+  - Si el correo falla al registrar, el usuario se crea igual y el mensaje pide usar "Reenviar invitación". Al reenviar, un fallo de correo responde 503.
+  - Si el usuario obtiene contraseña por otra vía (restablecimiento del administrador o "¿Olvidaste tu contraseña?"), la invitación pendiente se anula.
+  - Bitácora: `INVITACION_ENVIAR` (actor: administrador) e `INVITACION_ACEPTAR` (actor: el invitado), tabla `invitacion`.
 - **Requisitos de complejidad de la contraseña: [DEFINIDO].** CU04 menciona "la contraseña no cumple requisitos" sin detallarlos; el equipo los fijó en `05-reglas-negocio-CU02.md` §5.1: mínimo 8 caracteres con mayúscula, minúscula, número y carácter especial, validados por el componente único `PasswordPolicy`.
 - Forzar cambio de contraseña en el primer login: **[PENDIENTE]**, no implementar aún. Si en el futuro se decide, requerirá una columna adicional (p. ej. `debe_cambiar_contrasena`) que hoy no existe en el DDL.
 

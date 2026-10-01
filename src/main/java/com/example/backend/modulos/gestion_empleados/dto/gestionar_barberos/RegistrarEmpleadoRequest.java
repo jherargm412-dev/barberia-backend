@@ -19,7 +19,7 @@ public record RegistrarEmpleadoRequest(
         @Size(max = 100, message = "El campo correo admite máximo 100 caracteres")
         String correo,
 
-        /** Validada por {@code PasswordPolicy} en el servicio, no aquí. */
+        /** Validada por {@code PasswordPolicy} en el servicio, no aquí. Se ignora si {@code enviarInvitacion}. */
         String contrasena,
 
         @Size(max = 15, message = "El teléfono admite máximo 15 caracteres")
@@ -38,5 +38,8 @@ public record RegistrarEmpleadoRequest(
         @NotNull(message = "El tipo de contrato es obligatorio")
         TipoContrato tipoContrato,
 
-        Integer turnoId) {
+        Integer turnoId,
+
+        /** true = no se pide contraseña: se envía un correo para que el empleado la elija. */
+        Boolean enviarInvitacion) {
 }
