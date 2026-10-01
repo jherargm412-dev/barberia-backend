@@ -123,13 +123,18 @@ Estas reglas **no estaban definidas en la entrega**. 5.1 y 5.2 ya se definieron 
 | Mínimo a implementar hoy | Logout registra bitácora y devuelve 204; el token sigue siendo válido hasta `exp` (stateless). Deshabilitación: como los permisos se recalculan desde BD y `estado` se verifica en cada request autenticado (ver §6), un usuario deshabilitado **queda sin acceso de inmediato** aunque su token no haya expirado. |
 | Punto de extensión | *Blacklist* de tokens (Redis o tabla) o `jti` + versión de sesión en `usuario`, para invalidar tokens en logout real. Decidir junto con 5.3. |
 
-### 5.5 Recuperación de contraseña — [PENDIENTE] / fuera de alcance
+### 5.5 Recuperación de contraseña — [DEFINIDO]
 
 | | |
 |---|---|
-| Qué dice la entrega | No hay ningún CU de "olvidé mi contraseña" en los 28 casos de uso. El único mecanismo es que el **Administrador la restablece** vía CU01 ("actualiza… la contraseña de un usuario que los olvidó"). |
-| Mínimo a implementar hoy | Nada de autoservicio. El restablecimiento es `PATCH /usuarios/{id}/contrasena` (CU01). |
-| Punto de extensión | Si se agrega en el futuro será un CU nuevo (envío de correo, token de un solo uso, expiración). No preparar nada ahora. |
+| Qué dice la entrega | No hay un CU de "olvidé mi contraseña" en los 28 casos de uso; `Ciclo#1.md` lo lista como funcionalidad extra de CU02. El equipo decidió implementarlo. El restablecimiento por el Administrador (CU01) se mantiene. |
+| Flujo | 1) `POST /api/v1/auth/recuperar/codigo` `{correo}` → se envía un **código de 6 dígitos** por correo. 2) `POST /api/v1/auth/recuperar` `{correo, codigo, contrasenaNueva, confirmacion}` → fija la nueva contraseña. Ambos son públicos (sin token). Vale para todos los usuarios activos, clientes incluidos. |
+| Código | Dura **5 minutos**, es de **un solo uso** y se guarda **cifrado** (bcrypt, tabla `codigo_recuperacion`, migración V9). Pedir uno nuevo anula los anteriores. |
+| Intentos | **3** códigos incorrectos anulan el código ("Le quedan N intentos" / "Se agotaron los intentos"). La confirmación y la política de contraseña (§5.1) se validan antes y no gastan intentos. |
+| Límite de solicitudes | Más de **3** solicitudes en **30 minutos** → **429** `Demasiadas solicitudes. Intente de nuevo en N minutos`. |
+| Privacidad | Correo inexistente o cuenta no activa: misma respuesta 200 (`Si el correo está registrado, te enviamos un código…`) y no se envía nada. |
+| Efectos | Al recuperar, se levanta el bloqueo por intentos de login (§5.2). Bitácora: `RECUPERAR_CONTRASENA_SOLICITAR` (tabla `codigo_recuperacion`) y `RECUPERAR_CONTRASENA` (tabla `usuario`). |
+| Correo | Gmail del proyecto vía SMTP (`MAIL_USERNAME` / `MAIL_PASSWORD` en `.env`, contraseña de aplicación de Google). Si el servidor de correo falla → **503** y no se guarda el código. Sin `MAIL_USERNAME`, el correo se escribe en el log del backend (solo para desarrollo). Valores en `app.recuperacion.*`. |
 
 ---
 

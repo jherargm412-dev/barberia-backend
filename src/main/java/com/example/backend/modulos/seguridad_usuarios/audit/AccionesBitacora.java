@@ -14,6 +14,10 @@ public final class AccionesBitacora {
     public static final String CIERRE_SESION = "CIERRE_SESION";
     /** CU02 (05 §5.2): cuenta bloqueada temporalmente por intentos fallidos. */
     public static final String BLOQUEO_CUENTA = "BLOQUEO_CUENTA";
+    /** CU02 (05 §5.5): se envió un código de recuperación / se cambió la contraseña con él. */
+    public static final String RECUPERAR_CONTRASENA_SOLICITAR = "RECUPERAR_CONTRASENA_SOLICITAR";
+    public static final String RECUPERAR_CONTRASENA = "RECUPERAR_CONTRASENA";
+    public static final String TABLA_CODIGO_RECUPERACION = "codigo_recuperacion";
     // CU04 Configurar Perfil Personal
     public static final String PERFIL_ACTUALIZAR = "PERFIL_ACTUALIZAR";
     public static final String PERFIL_CAMBIAR_CONTRASENA = "PERFIL_CAMBIAR_CONTRASENA";

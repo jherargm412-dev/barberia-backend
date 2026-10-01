@@ -111,6 +111,16 @@ public class ManejadorGlobalExcepciones {
         return responder(HttpStatus.LOCKED, ex.getMessage(), req, null);
     }
 
+    @ExceptionHandler(DemasiadasSolicitudesException.class)
+    public ResponseEntity<ErrorApi> demasiadasSolicitudes(DemasiadasSolicitudesException ex, HttpServletRequest req) {
+        return responder(HttpStatus.TOO_MANY_REQUESTS, ex.getMessage(), req, null);
+    }
+
+    @ExceptionHandler(CorreoNoEnviadoException.class)
+    public ResponseEntity<ErrorApi> correoNoEnviado(CorreoNoEnviadoException ex, HttpServletRequest req) {
+        return responder(HttpStatus.SERVICE_UNAVAILABLE, CorreoNoEnviadoException.MENSAJE, req, null);
+    }
+
     @ExceptionHandler(AccessDeniedException.class)
     public ResponseEntity<ErrorApi> accesoDenegado(AccessDeniedException ex, HttpServletRequest req) {
         return responder(HttpStatus.FORBIDDEN, RestAccessDeniedHandler.mensajePara(req.getRequestURI()), req, null);

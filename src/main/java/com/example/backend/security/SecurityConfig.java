@@ -50,6 +50,8 @@ public class SecurityConfig {
                         .accessDeniedHandler(accessDeniedHandler))
                 .authorizeHttpRequests(a -> a
                         .requestMatchers(HttpMethod.POST, "/api/v1/auth/login").permitAll()
+                        // CU02 (05 §5.5): recuperar contraseña, sin sesión.
+                        .requestMatchers(HttpMethod.POST, "/api/v1/auth/recuperar", "/api/v1/auth/recuperar/codigo").permitAll()
                         .requestMatchers(HttpMethod.OPTIONS, "/**").permitAll()
                         .anyRequest().authenticated())
                 .addFilterBefore(filtroJwt, UsernamePasswordAuthenticationFilter.class);
