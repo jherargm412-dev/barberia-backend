@@ -1,6 +1,7 @@
 package com.example.backend.modulos.seguridad_usuarios;
 
 import com.example.backend.comun.correo.CorreoService;
+import com.example.backend.exception.CorreoNoEnviadoException;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -16,11 +17,21 @@ public class CorreoFalso implements CorreoService {
     }
 
     private static final Pattern CODIGO = Pattern.compile("Tu código es: (\\d{6})");
+    private static final Pattern TOKEN = Pattern.compile("token=([A-Za-z0-9_-]+)");
 
     private final List<Mensaje> enviados = new CopyOnWriteArrayList<>();
+    /** true = simula que el servidor de correo está caído. Cada prueba que lo active debe volver a false. */
+    private volatile boolean fallar = false;
+
+    public void setFallar(boolean fallar) {
+        this.fallar = fallar;
+    }
 
     @Override
     public void enviar(String para, String asunto, String cuerpo) {
+        if (fallar) {
+            throw new CorreoNoEnviadoException();
+        }
         enviados.add(new Mensaje(para, asunto, cuerpo));
     }
 
@@ -32,6 +43,16 @@ public class CorreoFalso implements CorreoService {
             }
         }
         return resultado;
+    }
+
+    /** Token del enlace del último correo de invitación enviado a {@code para}. */
+    public Optional<String> ultimoToken(String para) {
+        List<Mensaje> mensajes = enviadosA(para);
+        if (mensajes.isEmpty()) {
+            return Optional.empty();
+        }
+        Matcher m = TOKEN.matcher(mensajes.getLast().cuerpo());
+        return m.find() ? Optional.of(m.group(1)) : Optional.empty();
     }
 
     /** Código de 6 dígitos del último correo de recuperación enviado a {@code para}. */

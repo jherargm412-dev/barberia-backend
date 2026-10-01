@@ -16,6 +16,7 @@ import com.example.backend.modulos.seguridad_usuarios.repository.*;
 import com.example.backend.modulos.seguridad_usuarios.util.Correos;
 import com.example.backend.modulos.servicios_reservas.entity.Servicio;
 import com.example.backend.modulos.servicios_reservas.repository.ServicioRepository;
+import com.example.backend.modulos.seguridad_usuarios.service.aceptar_invitacion.InvitacionService;
 import com.example.backend.security.PasswordPolicy;
 import com.example.backend.security.UsuarioAutenticado;
 import lombok.RequiredArgsConstructor;
@@ -82,6 +83,7 @@ public class EmpleadoService {
     private final ServicioRepository servicioRepository;
     private final PasswordEncoder passwordEncoder;
     private final PasswordPolicy passwordPolicy;
+    private final InvitacionService invitacionService;
     private final BitacoraService bitacoraService;
     private final EmpleadoMapper mapper;
 
@@ -123,9 +125,11 @@ public class EmpleadoService {
 
     // ---------- Registrar (paso 2: usuario → rol_usuario → empleado) ----------
 
+    /** Con {@code enviarInvitacion} no se pide contraseña: se envía un enlace para que el empleado la elija. */
     @Transactional
-    public EmpleadoResponse registrar(RegistrarEmpleadoRequest peticion, UsuarioAutenticado actor) {
-        List<String> errores = passwordPolicy.validar(peticion.contrasena());
+    public RespuestaEmpleado registrar(RegistrarEmpleadoRequest peticion, UsuarioAutenticado actor) {
+        boolean invitar = Boolean.TRUE.equals(peticion.enviarInvitacion());
+        List<String> errores = invitar ? List.of() : passwordPolicy.validar(peticion.contrasena());
         if (!errores.isEmpty()) {
             throw new ValidacionNegocioException("La contraseña no cumple los requisitos",
                     Map.of("contrasena", String.join("; ", errores)));
@@ -142,7 +146,9 @@ public class EmpleadoService {
         Usuario usuario = new Usuario();
         usuario.setNombre(peticion.nombre().trim());
         usuario.setCorreo(correo);
-        usuario.setContrasena(passwordEncoder.encode(peticion.contrasena()));
+        usuario.setContrasena(invitar
+                ? invitacionService.contrasenaInutilizable()
+                : passwordEncoder.encode(peticion.contrasena()));
         usuario.setTelefono(telefono);
         usuario.setFechaNacimiento(peticion.fechaNacimiento());
         usuario.setEstado(EstadoUsuario.ACTIVO);
@@ -160,7 +166,13 @@ public class EmpleadoService {
 
         bitacoraService.registrar(referenciaActor(actor), EMPLEADO_CREAR, TABLA_EMPLEADO,
                 "Registro del empleado " + correo + " con rol " + rol.getNombre(), null, snapshot(empleado));
-        return mapper.aResponse(empleado, List.of());
+        String mensaje = RespuestaEmpleado.MENSAJE_REGISTRADO;
+        if (invitar) {
+            mensaje = invitacionService.invitar(usuario, referenciaActor(actor))
+                    ? RespuestaEmpleado.MENSAJE_INVITACION_ENVIADA
+                    : RespuestaEmpleado.MENSAJE_INVITACION_FALLIDA;
+        }
+        return new RespuestaEmpleado(mensaje, mapper.aResponse(empleado, List.of()));
     }
 
     // ---------- Editar (paso 3) ----------

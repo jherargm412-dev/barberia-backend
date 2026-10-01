@@ -16,7 +16,7 @@ public record CrearUsuarioRequest(
         @Size(max = 100, message = "El campo correo admite máximo 100 caracteres")
         String correo,
 
-        /** Validada por {@code PasswordPolicy} en el servicio, no aquí. */
+        /** Validada por {@code PasswordPolicy} en el servicio, no aquí. Se ignora si {@code enviarInvitacion}. */
         String contrasena,
 
         @Pattern(regexp = "^[0-9+\\s-]{0,15}$",
@@ -30,5 +30,8 @@ public record CrearUsuarioRequest(
         List<String> roles,
 
         @Valid
-        EmpleadoRequest empleado) {
+        EmpleadoRequest empleado,
+
+        /** true = no se pide contraseña: se envía un correo para que el usuario la elija. */
+        Boolean enviarInvitacion) {
 }

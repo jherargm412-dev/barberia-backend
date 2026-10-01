@@ -52,7 +52,7 @@ public class EmpleadoController {
     @PreAuthorize("hasAuthority('USUARIO_GESTIONAR') and hasAuthority('ROL_ASIGNAR')")
     public RespuestaEmpleado registrar(@Valid @RequestBody RegistrarEmpleadoRequest peticion,
                                        @AuthenticationPrincipal UsuarioAutenticado actor) {
-        return new RespuestaEmpleado(RespuestaEmpleado.MENSAJE_REGISTRADO, empleadoService.registrar(peticion, actor));
+        return empleadoService.registrar(peticion, actor);
     }
 
     /** Paso 3: editar datos de acceso e información laboral. */
