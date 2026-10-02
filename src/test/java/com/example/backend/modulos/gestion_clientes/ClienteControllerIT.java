@@ -50,6 +50,16 @@ class ClienteControllerIT extends IntegracionBaseTest {
                 .andExpect(status().isOk()).andExpect(jsonPath("$.totalElementos").value(1));
         assertThat(bitacoraRepository.countByAccion("CLIENTE_ACTUALIZAR")).isEqualTo(1);
         assertThat(bitacoraRepository.countByAccion("CLIENTE_DESACTIVAR")).isEqualTo(1);
+
+        mockMvc.perform(autorizado(patch(URL + "/" + id + "/activar"), token))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.mensaje").value("Cliente activado correctamente"))
+                .andExpect(jsonPath("$.cliente.activo").value(true));
+        mockMvc.perform(autorizado(patch(URL + "/" + id + "/activar"), token))
+                .andExpect(status().isOk()).andExpect(jsonPath("$.cliente.activo").value(true));
+        mockMvc.perform(autorizado(get(URL).param("activo", "true").param("q", "Ana Pérez"), token))
+                .andExpect(status().isOk()).andExpect(jsonPath("$.totalElementos").value(1));
+        assertThat(bitacoraRepository.countByAccion("CLIENTE_ACTIVAR")).isEqualTo(1);
     }
 
     /** Los campos inválidos se rechazan y el Barbero no accede al módulo. */
@@ -66,6 +76,7 @@ class ClienteControllerIT extends IntegracionBaseTest {
         mockMvc.perform(autorizado(get(URL), barbero)).andExpect(status().isForbidden());
         mockMvc.perform(autorizado(post(URL), barbero).content(json(Map.of("nombre", "Ana"))))
                 .andExpect(status().isForbidden());
+        mockMvc.perform(autorizado(patch(URL + "/1/activar"), barbero)).andExpect(status().isForbidden());
         mockMvc.perform(get(URL)).andExpect(status().isUnauthorized());
     }
 }
