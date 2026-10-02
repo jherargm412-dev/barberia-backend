@@ -35,8 +35,12 @@ services:
       APP_SEED_ADMIN_EMAIL: ${APP_SEED_ADMIN_EMAIL:?Falta APP_SEED_ADMIN_EMAIL en backend/.env}
       APP_SEED_ADMIN_PASSWORD: ${APP_SEED_ADMIN_PASSWORD:?Falta APP_SEED_ADMIN_PASSWORD en backend/.env}
       APP_SEED_ADMIN_NOMBRE: ${APP_SEED_ADMIN_NOMBRE:-Administrador}
-      # Etapa 1 sin correo: vacío = los correos se escriben en el log (igual que en Railway por ahora).
+      # Correo: por defecto se escribe en el log. Para enviar de verdad, como en Railway:
+      #   APP_CORREO_PROVEEDOR=brevo docker compose up --build   (usa BREVO_API_KEY y MAIL_FROM de backend/.env)
       MAIL_USERNAME: ""
+      APP_CORREO_PROVEEDOR: ${APP_CORREO_PROVEEDOR:-smtp}
+      BREVO_API_KEY: ${BREVO_API_KEY:-}
+      MAIL_FROM: ${MAIL_FROM:-}
       # Frontend local en Docker (ver README del frontend).
       CORS_ORIGIN: http://localhost:8081
       APP_FRONTEND_URL: http://localhost:8081
