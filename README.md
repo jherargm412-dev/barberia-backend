@@ -96,11 +96,15 @@ Usa `JWT_SECRET` y `APP_SEED_ADMIN_*` de tu `.env` y una base propia dentro de D
 | `APP_SEED_ADMIN_EMAIL` / `APP_SEED_ADMIN_PASSWORD` / `APP_SEED_ADMIN_NOMBRE` | El administrador real |
 | `CORS_ORIGIN` | URL del frontend, sin `/` al final |
 | `APP_FRONTEND_URL` | URL del frontend (enlaces de invitación) |
+| `APP_CORREO_PROVEEDOR` | `brevo` |
+| `BREVO_API_KEY` | Clave de Brevo (**SMTP y API → Claves API**) |
+| `MAIL_FROM` | Remitente verificado en Brevo (`barberia.houseofcut@gmail.com`) |
 
 `PORT` lo pone Railway solo. En **Settings → Healthcheck Path** va `/actuator/health`.
 
-**Correo:** Railway (planes Free y Hobby) bloquea SMTP, así que por ahora `MAIL_USERNAME` va
-**vacía**: los correos se escriben en el log del servicio. Se reemplazará por una API de correo (Brevo).
+**Correo:** Railway (planes Free y Hobby) bloquea SMTP, por eso en producción los correos salen por la
+API HTTPS de Brevo (`BrevoCorreoService`). Si falta `BREVO_API_KEY` o `MAIL_FROM`, el backend no arranca.
+En local se sigue usando SMTP (`APP_CORREO_PROVEEDOR=smtp`, el valor por defecto).
 
 ## 📁 Estructura del Repositorio
 
