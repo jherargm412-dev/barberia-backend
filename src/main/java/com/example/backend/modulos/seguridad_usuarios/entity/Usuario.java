@@ -51,6 +51,14 @@ public class Usuario {
     @Column(name = "activo", nullable = false)
     private boolean activo = true;
 
+    /** CU02: contraseñas incorrectas seguidas. Vuelve a 0 con un login correcto o al bloquear la cuenta. */
+    @Column(name = "intentos_fallidos", nullable = false)
+    private int intentosFallidos = 0;
+
+    /** CU02: mientras sea una hora futura, la cuenta no puede iniciar sesión. Null = no bloqueada. */
+    @Column(name = "bloqueado_hasta")
+    private LocalDateTime bloqueadoHasta;
+
     @ManyToMany(fetch = FetchType.LAZY)
     @JoinTable(name = "rol_usuario",
             joinColumns = @JoinColumn(name = "usuario_id"),
@@ -65,6 +73,16 @@ public class Usuario {
 
     public boolean estaActivo() {
         return estado == EstadoUsuario.ACTIVO;
+    }
+
+    public boolean estaBloqueado(LocalDateTime ahora) {
+        return bloqueadoHasta != null && bloqueadoHasta.isAfter(ahora);
+    }
+
+    /** Quita el bloqueo y reinicia el contador (login correcto o restablecimiento por el administrador). */
+    public void desbloquear() {
+        intentosFallidos = 0;
+        bloqueadoHasta = null;
     }
 
     public boolean tieneRol(String nombreRol) {

@@ -45,7 +45,7 @@ Las pruebas usan la misma base `barber` pero en un esquema aislado `cu_test`, qu
 | PATCH | `/api/v1/usuarios/{id}/contrasena` | USUARIO_GESTIONAR | CU01 3b |
 | PATCH | `/api/v1/usuarios/{id}/deshabilitar` | USUARIO_GESTIONAR | CU01 3c |
 | PATCH | `/api/v1/usuarios/{id}/activar` | USUARIO_GESTIONAR | CU01 |
-| GET | `/api/v1/roles?activo=true` | USUARIO_GESTIONAR | CU01 paso 4 |
+| GET | `/api/v1/roles?activo=true` | USUARIO_GESTIONAR o ROL_ASIGNAR | CU01 paso 4 (endpoint de CU03, ver `CU03/00-README.md`) |
 
 No existe `DELETE /api/v1/usuarios/{id}`: responde 405.
 

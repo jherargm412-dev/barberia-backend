@@ -48,7 +48,7 @@ class UsuarioControllerIT extends IntegracionBaseTest {
         String admin = tokenAdmin();
         long antes = bitacoraRepository.countByAccion("USUARIO_CREAR");
         MvcResult r = mockMvc.perform(conToken(post("/api/v1/usuarios"), admin)
-                        .content(json(barbero("Juan.Perez@HouseOfCut.bo", "Clave123"))))
+                        .content(json(barbero("Juan.Perez@HouseOfCut.bo", "Clave123!"))))
                 .andExpect(status().isCreated())
                 .andExpect(jsonPath("$.mensaje").value("Usuario registrado correctamente"))
                 .andExpect(jsonPath("$.usuario.correo").value("juan.perez@houseofcut.bo"))
@@ -77,7 +77,7 @@ class UsuarioControllerIT extends IntegracionBaseTest {
     @Test
     @DisplayName("2. Registrar Cliente: 201, fila en cliente con nombre y teléfono copiados, sin empleado")
     void registrarCliente() throws Exception {
-        int id = crearUsuario(tokenAdmin(), cliente("cliente.nuevo@houseofcut.bo", "Clave123"));
+        int id = crearUsuario(tokenAdmin(), cliente("cliente.nuevo@houseofcut.bo", "Clave123!"));
         var c = clienteRepository.findByUsuario_IdUsuario(id).orElseThrow();
         assertThat(c.getNombre()).isEqualTo("Cliente Prueba");
         assertThat(c.getTelefono()).isEqualTo("76543210");
@@ -88,9 +88,9 @@ class UsuarioControllerIT extends IntegracionBaseTest {
     @DisplayName("3. Correo repetido con distinta capitalización: 409")
     void correoRepetido() throws Exception {
         String admin = tokenAdmin();
-        crearUsuario(admin, cliente("repetido@houseofcut.bo", "Clave123"));
+        crearUsuario(admin, cliente("repetido@houseofcut.bo", "Clave123!"));
         mockMvc.perform(conToken(post("/api/v1/usuarios"), admin)
-                        .content(json(cliente("REPETIDO@HouseOfCut.bo", "Clave123"))))
+                        .content(json(cliente("REPETIDO@HouseOfCut.bo", "Clave123!"))))
                 .andExpect(status().isConflict())
                 .andExpect(jsonPath("$.message").value("El correo ya está registrado"))
                 .andExpect(jsonPath("$.campos.correo").value("ya registrado"));
@@ -100,13 +100,13 @@ class UsuarioControllerIT extends IntegracionBaseTest {
     @DisplayName("4. Sin roles, rol inexistente o rol inactivo: 400")
     void rolesInvalidos() throws Exception {
         String admin = tokenAdmin();
-        Map<String, Object> sinRoles = new HashMap<>(cliente("sinrol@houseofcut.bo", "Clave123"));
+        Map<String, Object> sinRoles = new HashMap<>(cliente("sinrol@houseofcut.bo", "Clave123!"));
         sinRoles.put("roles", List.of());
         mockMvc.perform(conToken(post("/api/v1/usuarios"), admin).content(json(sinRoles)))
                 .andExpect(status().isBadRequest())
                 .andExpect(jsonPath("$.message").value("Debe asignar al menos un rol válido"));
 
-        Map<String, Object> rolInexistente = new HashMap<>(cliente("rolx@houseofcut.bo", "Clave123"));
+        Map<String, Object> rolInexistente = new HashMap<>(cliente("rolx@houseofcut.bo", "Clave123!"));
         rolInexistente.put("roles", List.of("Gerente"));
         mockMvc.perform(conToken(post("/api/v1/usuarios"), admin).content(json(rolInexistente)))
                 .andExpect(status().isBadRequest())
@@ -122,7 +122,33 @@ class UsuarioControllerIT extends IntegracionBaseTest {
         rol.setActivo(false);
         rolRepository.saveAndFlush(rol);
         mockMvc.perform(conToken(post("/api/v1/usuarios"), admin)
-                        .content(json(cliente("rolinactivo@houseofcut.bo", "Clave123"))))
+                        .content(json(cliente("rolinactivo@houseofcut.bo", "Clave123!"))))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.message").value("Debe asignar al menos un rol válido"));
+    }
+
+    @Test
+    @DisplayName("4c. Rol desactivado (CU03): quien ya lo tenía se puede editar; a otro no se le puede asignar")
+    void rolInactivoQueYaTenia() throws Exception {
+        String admin = tokenAdmin();
+        int conRol = crearUsuario(admin, cliente("yatenia@houseofcut.bo", "Clave123!"));
+        int sinRol = crearUsuario(admin, barbero("notenia@houseofcut.bo", "Clave123!"));
+        var rol = rolRepository.findByNombre("Cliente").orElseThrow();
+        rol.setActivo(false);
+        rolRepository.saveAndFlush(rol);
+
+        Map<String, Object> soloTelefono = Map.of(
+                "nombre", "Cliente Prueba", "correo", "yatenia@houseofcut.bo",
+                "telefono", "70000001", "roles", List.of("Cliente"));
+        mockMvc.perform(conToken(put("/api/v1/usuarios/" + conRol), admin).content(json(soloTelefono)))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.telefono").value("70000001"))
+                .andExpect(jsonPath("$.roles[0].nombre").value("Cliente"));
+
+        Map<String, Object> agregarInactivo = new HashMap<>(barbero("notenia@houseofcut.bo", "Clave123!"));
+        agregarInactivo.remove("contrasena");
+        agregarInactivo.put("roles", List.of("Barbero", "Cliente"));
+        mockMvc.perform(conToken(put("/api/v1/usuarios/" + sinRol), admin).content(json(agregarInactivo)))
                 .andExpect(status().isBadRequest())
                 .andExpect(jsonPath("$.message").value("Debe asignar al menos un rol válido"));
     }
@@ -130,7 +156,7 @@ class UsuarioControllerIT extends IntegracionBaseTest {
     @Test
     @DisplayName("5. Barbero sin empleado.tipoContrato: 400")
     void barberoSinTipoContrato() throws Exception {
-        Map<String, Object> cuerpo = new HashMap<>(barbero("sincontrato@houseofcut.bo", "Clave123"));
+        Map<String, Object> cuerpo = new HashMap<>(barbero("sincontrato@houseofcut.bo", "Clave123!"));
         cuerpo.remove("empleado");
         mockMvc.perform(conToken(post("/api/v1/usuarios"), tokenAdmin()).content(json(cuerpo)))
                 .andExpect(status().isBadRequest())
@@ -141,7 +167,7 @@ class UsuarioControllerIT extends IntegracionBaseTest {
     @DisplayName("Campos obligatorios faltantes y contraseña vacía: 400 con mensaje por campo")
     void camposObligatorios() throws Exception {
         String admin = tokenAdmin();
-        Map<String, Object> sinNombre = new HashMap<>(cliente("sinnombre@houseofcut.bo", "Clave123"));
+        Map<String, Object> sinNombre = new HashMap<>(cliente("sinnombre@houseofcut.bo", "Clave123!"));
         sinNombre.remove("nombre");
         mockMvc.perform(conToken(post("/api/v1/usuarios"), admin).content(json(sinNombre)))
                 .andExpect(status().isBadRequest())
@@ -157,7 +183,7 @@ class UsuarioControllerIT extends IntegracionBaseTest {
     @DisplayName("6. Actualizar nombre de un usuario-cliente propaga a cliente; bitácora USUARIO_ACTUALIZAR")
     void actualizarPropagaACliente() throws Exception {
         String admin = tokenAdmin();
-        int id = crearUsuario(admin, cliente("propaga@houseofcut.bo", "Clave123"));
+        int id = crearUsuario(admin, cliente("propaga@houseofcut.bo", "Clave123!"));
         Map<String, Object> cambios = Map.of(
                 "nombre", "Nombre Nuevo", "correo", "propaga@houseofcut.bo",
                 "telefono", "70000000", "roles", List.of("Cliente"));
@@ -177,7 +203,7 @@ class UsuarioControllerIT extends IntegracionBaseTest {
     @DisplayName("Cambio de roles registra ROL_ASIGNAR y crea empleado si falta, sin borrar cliente")
     void cambioDeRoles() throws Exception {
         String admin = tokenAdmin();
-        int id = crearUsuario(admin, cliente("ascenso@houseofcut.bo", "Clave123"));
+        int id = crearUsuario(admin, cliente("ascenso@houseofcut.bo", "Clave123!"));
         Map<String, Object> cambios = Map.of(
                 "nombre", "Cliente Prueba", "correo", "ascenso@houseofcut.bo",
                 "roles", List.of("Barbero"),
@@ -197,7 +223,7 @@ class UsuarioControllerIT extends IntegracionBaseTest {
     @DisplayName("7. Deshabilitar: INACTIVO, activo=false, bitácora, ya no puede iniciar sesión; luego reactivar")
     void deshabilitarYActivar() throws Exception {
         String admin = tokenAdmin();
-        int id = crearUsuario(admin, barbero("deshabilitar@houseofcut.bo", "Clave123"));
+        int id = crearUsuario(admin, barbero("deshabilitar@houseofcut.bo", "Clave123!"));
         mockMvc.perform(conToken(patch("/api/v1/usuarios/" + id + "/deshabilitar"), admin))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.estado").value("INACTIVO"));
@@ -206,13 +232,13 @@ class UsuarioControllerIT extends IntegracionBaseTest {
         Bitacora b = bitacoraRepository.findByAccionOrderByIdBitacoraDesc("USUARIO_DESHABILITAR").getFirst();
         assertThat(b.getDatosAnteriores()).contains("ACTIVO");
         assertThat(b.getDatosNuevos()).contains("INACTIVO");
-        assertThat(loginResultado("deshabilitar@houseofcut.bo", "Clave123").getResponse().getStatus()).isEqualTo(401);
+        assertThat(loginResultado("deshabilitar@houseofcut.bo", "Clave123!").getResponse().getStatus()).isEqualTo(401);
 
         mockMvc.perform(conToken(patch("/api/v1/usuarios/" + id + "/activar"), admin))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.estado").value("ACTIVO"));
         assertThat(bitacoraRepository.countByAccion("USUARIO_ACTIVAR")).isPositive();
-        assertThat(loginResultado("deshabilitar@houseofcut.bo", "Clave123").getResponse().getStatus()).isEqualTo(200);
+        assertThat(loginResultado("deshabilitar@houseofcut.bo", "Clave123!").getResponse().getStatus()).isEqualTo(200);
     }
 
     @Test
@@ -242,8 +268,8 @@ class UsuarioControllerIT extends IntegracionBaseTest {
         rolRepository.saveAndFlush(recepcionista);
 
         String admin = tokenAdmin();
-        crearUsuario(admin, recepcionista("recep.gestora@houseofcut.bo", "Clave123"));
-        String recep = token("recep.gestora@houseofcut.bo", "Clave123");
+        crearUsuario(admin, recepcionista("recep.gestora@houseofcut.bo", "Clave123!"));
+        String recep = token("recep.gestora@houseofcut.bo", "Clave123!");
         Integer idAdmin = admin().getIdUsuario();
         assertThat(usuarioRepository.countByEstadoAndRoles_Nombre(EstadoUsuario.ACTIVO, "Administrador")).isEqualTo(1);
 
@@ -260,7 +286,7 @@ class UsuarioControllerIT extends IntegracionBaseTest {
 
         // Con un segundo administrador activo, deshabilitar al primero sí está permitido.
         crearUsuario(admin, Map.of(
-                "nombre", "Segundo Admin", "correo", "segundo.admin@houseofcut.bo", "contrasena", "Clave123",
+                "nombre", "Segundo Admin", "correo", "segundo.admin@houseofcut.bo", "contrasena", "Clave123!",
                 "roles", List.of("Administrador"), "empleado", Map.of("tipoContrato", "ASALARIADO")));
         mockMvc.perform(conToken(patch("/api/v1/usuarios/" + idAdmin + "/deshabilitar"), recep))
                 .andExpect(status().isOk());
@@ -270,7 +296,7 @@ class UsuarioControllerIT extends IntegracionBaseTest {
     @DisplayName("10. DELETE /usuarios/{id}: 405 y el usuario sigue existiendo")
     void deleteNoPermitido() throws Exception {
         String admin = tokenAdmin();
-        int id = crearUsuario(admin, cliente("nodelete@houseofcut.bo", "Clave123"));
+        int id = crearUsuario(admin, cliente("nodelete@houseofcut.bo", "Clave123!"));
         mockMvc.perform(conToken(delete("/api/v1/usuarios/" + id), admin))
                 .andExpect(status().isMethodNotAllowed());
         assertThat(usuarioRepository.existsById(id)).isTrue();
@@ -281,7 +307,7 @@ class UsuarioControllerIT extends IntegracionBaseTest {
     void sinContrasenaEnRespuestas() throws Exception {
         String admin = tokenAdmin();
         MvcResult creado = mockMvc.perform(conToken(post("/api/v1/usuarios"), admin)
-                        .content(json(barbero("sinclave.resp@houseofcut.bo", "Clave123"))))
+                        .content(json(barbero("sinclave.resp@houseofcut.bo", "Clave123!"))))
                 .andExpect(status().isCreated()).andReturn();
         int id = leer(creado).get("usuario").get("idUsuario").asInt();
         List<String> respuestas = List.of(
@@ -296,12 +322,12 @@ class UsuarioControllerIT extends IntegracionBaseTest {
     @DisplayName("12. Recepcionista en cualquier endpoint de CU01: 403")
     void recepcionistaProhibido() throws Exception {
         String admin = tokenAdmin();
-        int id = crearUsuario(admin, recepcionista("recep.403@houseofcut.bo", "Clave123"));
-        String recep = token("recep.403@houseofcut.bo", "Clave123");
+        int id = crearUsuario(admin, recepcionista("recep.403@houseofcut.bo", "Clave123!"));
+        String recep = token("recep.403@houseofcut.bo", "Clave123!");
         List<MockHttpServletRequestBuilder> peticiones = List.of(
                 get("/api/v1/usuarios"),
                 get("/api/v1/usuarios/" + id),
-                post("/api/v1/usuarios").content(json(cliente("x@houseofcut.bo", "Clave123"))),
+                post("/api/v1/usuarios").content(json(cliente("x@houseofcut.bo", "Clave123!"))),
                 put("/api/v1/usuarios/" + id).content(json(Map.of("nombre", "x", "correo", "x@houseofcut.bo", "roles", List.of("Cliente")))),
                 patch("/api/v1/usuarios/" + id + "/contrasena").content(json(Map.of("contrasenaNueva", "otra"))),
                 patch("/api/v1/usuarios/" + id + "/deshabilitar"),
@@ -316,14 +342,14 @@ class UsuarioControllerIT extends IntegracionBaseTest {
     @DisplayName("Restablecer contraseña: 204, bitácora sin hash, la nueva funciona")
     void restablecerContrasena() throws Exception {
         String admin = tokenAdmin();
-        int id = crearUsuario(admin, cliente("olvido@houseofcut.bo", "Vieja123"));
+        int id = crearUsuario(admin, cliente("olvido@houseofcut.bo", "Vieja123!"));
         mockMvc.perform(conToken(patch("/api/v1/usuarios/" + id + "/contrasena"), admin)
-                        .content(json(Map.of("contrasenaNueva", "Nueva456"))))
+                        .content(json(Map.of("contrasenaNueva", "Nueva456!"))))
                 .andExpect(status().isNoContent());
         Bitacora b = bitacoraRepository.findByAccionOrderByIdBitacoraDesc("USUARIO_CAMBIAR_CONTRASENA").getFirst();
         assertThat(b.getDatosNuevos()).isEqualTo("{\"idUsuario\":" + id + "}");
-        assertThat(loginResultado("olvido@houseofcut.bo", "Vieja123").getResponse().getStatus()).isEqualTo(401);
-        assertThat(loginResultado("olvido@houseofcut.bo", "Nueva456").getResponse().getStatus()).isEqualTo(200);
+        assertThat(loginResultado("olvido@houseofcut.bo", "Vieja123!").getResponse().getStatus()).isEqualTo(401);
+        assertThat(loginResultado("olvido@houseofcut.bo", "Nueva456!").getResponse().getStatus()).isEqualTo(200);
 
         mockMvc.perform(conToken(patch("/api/v1/usuarios/" + id + "/contrasena"), admin)
                         .content(json(Map.of("contrasenaNueva", " "))))
@@ -334,8 +360,8 @@ class UsuarioControllerIT extends IntegracionBaseTest {
     @DisplayName("Listar con filtros, paginación y orden; consultar 404; roles activos")
     void listarConsultarYRoles() throws Exception {
         String admin = tokenAdmin();
-        crearUsuario(admin, barbero("zeta.barbero@houseofcut.bo", "Clave123"));
-        crearUsuario(admin, cliente("alfa.cliente@houseofcut.bo", "Clave123"));
+        crearUsuario(admin, barbero("zeta.barbero@houseofcut.bo", "Clave123!"));
+        crearUsuario(admin, cliente("alfa.cliente@houseofcut.bo", "Clave123!"));
 
         mockMvc.perform(conToken(get("/api/v1/usuarios").param("rol", "Barbero"), admin))
                 .andExpect(status().isOk())

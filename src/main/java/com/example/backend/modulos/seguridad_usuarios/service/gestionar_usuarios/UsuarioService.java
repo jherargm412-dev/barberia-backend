@@ -8,6 +8,7 @@ import com.example.backend.exception.RecursoNoEncontradoException;
 import com.example.backend.exception.ValidacionNegocioException;
 import com.example.backend.modulos.seguridad_usuarios.mapper.gestionar_usuarios.UsuarioMapper;
 import com.example.backend.modulos.seguridad_usuarios.repository.*;
+import com.example.backend.modulos.seguridad_usuarios.service.aceptar_invitacion.InvitacionService;
 import com.example.backend.security.PasswordPolicy;
 import com.example.backend.security.UsuarioAutenticado;
 import com.example.backend.comun.PaginaRespuesta;
@@ -42,6 +43,7 @@ public class UsuarioService {
     private final PasswordEncoder passwordEncoder;
     private final PasswordPolicy passwordPolicy;
     private final BitacoraService bitacoraService;
+    private final InvitacionService invitacionService;
     private final UsuarioMapper mapper;
 
     // ---------- Consultas (no se registran en bitácora) ----------
@@ -65,14 +67,18 @@ public class UsuarioService {
 
     // ---------- Registrar (CU01 pasos 3–7) ----------
 
+    /** Con {@code enviarInvitacion} no se pide contraseña: se envía un enlace para que el usuario la elija. */
     @Transactional
-    public UsuarioDetalle registrar(CrearUsuarioRequest peticion, UsuarioAutenticado actor) {
-        validarContrasena(peticion.contrasena());
+    public RespuestaRegistro registrar(CrearUsuarioRequest peticion, UsuarioAutenticado actor) {
+        boolean invitar = Boolean.TRUE.equals(peticion.enviarInvitacion());
+        if (!invitar) {
+            validarContrasena(peticion.contrasena());
+        }
         String correo = Correos.normalizar(peticion.correo());
         if (usuarioRepository.existsByCorreo(correo)) {
             throw correoRepetido();
         }
-        Set<Rol> roles = resolverRoles(peticion.roles());
+        Set<Rol> roles = resolverRoles(peticion.roles(), Set.of());
         boolean esEmpleado = roles.stream().anyMatch(Rol::esRolDeEmpleado);
         boolean esCliente = roles.stream().anyMatch(r -> Rol.CLIENTE.equals(r.getNombre()));
         if (esEmpleado) {
@@ -82,7 +88,9 @@ public class UsuarioService {
         Usuario usuario = new Usuario();
         usuario.setNombre(peticion.nombre().trim());
         usuario.setCorreo(correo);
-        usuario.setContrasena(passwordEncoder.encode(peticion.contrasena()));
+        usuario.setContrasena(invitar
+                ? invitacionService.contrasenaInutilizable()
+                : passwordEncoder.encode(peticion.contrasena()));
         usuario.setTelefono(limpiar(peticion.telefono()));
         usuario.setFechaNacimiento(peticion.fechaNacimiento());
         usuario.setEstado(EstadoUsuario.ACTIVO);
@@ -99,7 +107,13 @@ public class UsuarioService {
         bitacoraService.registrar(referenciaActor(actor), AccionesBitacora.USUARIO_CREAR, AccionesBitacora.TABLA_USUARIO,
                 "Registro de usuario " + correo + " con rol " + nombresDe(roles),
                 null, snapshot(usuario));
-        return mapper.aDetalle(usuario);
+        String mensaje = RespuestaRegistro.MENSAJE_REGISTRO;
+        if (invitar) {
+            mensaje = invitacionService.invitar(usuario, referenciaActor(actor))
+                    ? RespuestaRegistro.MENSAJE_INVITACION_ENVIADA
+                    : RespuestaRegistro.MENSAJE_INVITACION_FALLIDA;
+        }
+        return new RespuestaRegistro(mensaje, mapper.aDetalle(usuario));
     }
 
     // ---------- Actualizar datos y roles (CU01 3b) ----------
@@ -114,7 +128,7 @@ public class UsuarioService {
         if (usuarioRepository.existsByCorreoAndIdUsuarioNot(correo, id)) {
             throw correoRepetido();
         }
-        Set<Rol> nuevosRoles = resolverRoles(peticion.roles());
+        Set<Rol> nuevosRoles = resolverRoles(peticion.roles(), usuario.getRoles());
         boolean seguiraSiendoAdmin = nuevosRoles.stream().anyMatch(r -> Rol.ADMINISTRADOR.equals(r.getNombre()));
         if (usuario.tieneRol(Rol.ADMINISTRADOR) && !seguiraSiendoAdmin) {
             if (id.equals(actor.idUsuario())) {
@@ -180,10 +194,20 @@ public class UsuarioService {
         Usuario usuario = buscar(id);
         validarContrasena(contrasenaNueva);
         usuario.setContrasena(passwordEncoder.encode(contrasenaNueva));
+        usuario.desbloquear(); // 05 §5.2: el restablecimiento por el administrador levanta el bloqueo
         usuarioRepository.save(usuario);
+        invitacionService.anularPendientes(id); // ya tiene contraseña: la invitación sobra
         bitacoraService.registrar(referenciaActor(actor), AccionesBitacora.USUARIO_CAMBIAR_CONTRASENA,
                 AccionesBitacora.TABLA_USUARIO, "Restablecimiento de contraseña de " + usuario.getCorreo(),
                 null, Map.of("idUsuario", id));
+    }
+
+    /** Reenvía la invitación por correo (anula el enlace anterior). 409 si ya activó su cuenta. */
+    @Transactional
+    public UsuarioDetalle reenviarInvitacion(Integer id, UsuarioAutenticado actor) {
+        Usuario usuario = buscar(id);
+        invitacionService.reenviar(usuario, referenciaActor(actor));
+        return mapper.aDetalle(usuario);
     }
 
     // ---------- Deshabilitar (CU01 3c) y reactivar ----------
@@ -251,8 +275,13 @@ public class UsuarioService {
         return new ConflictoException("El correo ya está registrado", Map.of("correo", "ya registrado"));
     }
 
-    /** Todos los nombres deben corresponder a roles existentes y activos; mínimo uno. */
-    private Set<Rol> resolverRoles(List<String> nombres) {
+    /**
+     * Todos los nombres deben corresponder a roles existentes; mínimo uno. Un rol inactivo solo se acepta
+     * si el usuario ya lo tenía (CU03 R7: desactivar un rol no se lo quita a sus usuarios), así se puede
+     * seguir editando a esos usuarios sin poder asignar el rol inactivo a nadie más.
+     */
+    private Set<Rol> resolverRoles(List<String> nombres, Set<Rol> rolesActuales) {
+        Set<Integer> idsActuales = rolesActuales.stream().map(Rol::getIdRol).collect(Collectors.toSet());
         Set<String> pedidos = nombres == null ? Set.of() : nombres.stream()
                 .filter(n -> n != null && !n.isBlank())
                 .map(n -> n.trim().toLowerCase(Locale.ROOT))
@@ -261,7 +290,7 @@ public class UsuarioService {
             throw rolInvalido();
         }
         List<Rol> encontrados = rolRepository.findByNombreIgnoreCaseIn(pedidos);
-        if (encontrados.size() != pedidos.size() || encontrados.stream().anyMatch(r -> !r.isActivo())) {
+        if (encontrados.size() != pedidos.size() || encontrados.stream().anyMatch(r -> !r.isActivo() && !idsActuales.contains(r.getIdRol()))) {
             throw rolInvalido();
         }
         return new LinkedHashSet<>(encontrados);

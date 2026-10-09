@@ -34,9 +34,12 @@ public class ServicioController {
         return servicioService.listar(estado, q, page, size);
     }
 
-    /** Apoyo a reservas y ventas: servicios habilitados, sin porcentaje de comisión. */
+    /**
+     * Apoyo a reservas, ventas y CU17 (asignar servicios a un barbero, que exige USUARIO_GESTIONAR):
+     * servicios habilitados, sin porcentaje de comisión.
+     */
     @GetMapping("/habilitados")
-    @PreAuthorize("hasAuthority('SERVICIO_CONSULTAR') or hasAuthority('SERVICIO_GESTIONAR')")
+    @PreAuthorize("hasAuthority('SERVICIO_CONSULTAR') or hasAuthority('SERVICIO_GESTIONAR') or hasAuthority('USUARIO_GESTIONAR')")
     public List<ServicioResumen> habilitados() {
         return servicioService.listarHabilitados();
     }

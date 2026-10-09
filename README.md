@@ -69,21 +69,72 @@ V3__descripcion_corta.sql
 - Antes de crear una migración, haz `git pull` para no repetir el número de versión
   de un compañero.
 
-## Estructura
+## Despliegue (Railway)
+
+Railway construye la imagen con el `Dockerfile` cada vez que se hace merge a `main`.
+**El `Dockerfile` no corre las pruebas**: corre `./gradlew test` antes de aprobar un Pull Request.
+
+### Probar el despliegue en tu máquina (Docker Desktop)
+
+```bash
+docker compose up --build     # PostgreSQL + backend en perfil prod
+docker compose down -v        # apagar y borrar la base de prueba
+```
+
+Usa `JWT_SECRET` y `APP_SEED_ADMIN_*` de tu `.env` y una base propia dentro de Docker
+(no toca tu PostgreSQL local). Comprueba que `http://localhost:8080/actuator/health` responda `UP`.
+
+### Variables del servicio en Railway
+
+| Variable | Valor |
+|---|---|
+| `SPRING_PROFILES_ACTIVE` | `prod` |
+| `DB_URL` | `jdbc:postgresql://${{Postgres.PGHOST}}:${{Postgres.PGPORT}}/${{Postgres.PGDATABASE}}` |
+| `DB_USERNAME` | `${{Postgres.PGUSER}}` |
+| `DB_PASSWORD` | `${{Postgres.PGPASSWORD}}` |
+| `JWT_SECRET` | Uno nuevo, solo para producción (`openssl rand -base64 48`) |
+| `APP_SEED_ADMIN_EMAIL` / `APP_SEED_ADMIN_PASSWORD` / `APP_SEED_ADMIN_NOMBRE` | El administrador real |
+| `CORS_ORIGIN` | URL del frontend, sin `/` al final |
+| `APP_FRONTEND_URL` | URL del frontend (enlaces de invitación) |
+| `APP_CORREO_PROVEEDOR` | `brevo` |
+| `BREVO_API_KEY` | Clave de Brevo (**SMTP y API → Claves API**) |
+| `MAIL_FROM` | Remitente verificado en Brevo (`barberia.houseofcut@gmail.com`) |
+
+`PORT` lo pone Railway solo. En **Settings → Healthcheck Path** va `/actuator/health`.
+
+**Correo:** Railway (planes Free y Hobby) bloquea SMTP, por eso en producción los correos salen por la
+API HTTPS de Brevo (`BrevoCorreoService`). Si falta `BREVO_API_KEY` o `MAIL_FROM`, el backend no arranca.
+En local se sigue usando SMTP (`APP_CORREO_PROVEEDOR=smtp`, el valor por defecto).
+
+## 📁 Estructura del Repositorio
 
 ```
-com.example.backend/
-  exception/                 GLOBAL: excepciones, ManejadorGlobalExcepciones, ErrorApi
-  security/                  GLOBAL: SecurityConfig, JWT, UsuarioAutenticado, permisos
-  comun/                     GLOBAL: lo que comparten todos los módulos (PaginaRespuesta)
-  modulos/                   un paquete por módulo (mismos nombres que en el frontend)
-    seguridad_usuarios/
-    gestion_clientes/
-    gestion_empleados/
-    servicios_reservas/
-    ventas_caja/
-    inventario_compras/
-    reportes/
+barberia-backend/
+│
+├── src/main/java/.../backend/
+│   ├── security/               # JWT, login y permisos
+│   ├── exception/              # Errores y manejador global
+│   ├── comun/                  # Clases compartidas (PaginaRespuesta)
+│   └── modulos/
+│       ├── seguridad_usuarios/ # CU01, CU02, CU05 (Usuarios, Login, Bitácora)
+│       ├── gestion_clientes/   # CU06 (Clientes)
+│       ├── gestion_empleados/  # Por implementar
+│       ├── servicios_reservas/ # CU08 (Catálogo de servicios, Reservas)
+│       ├── ventas_caja/        # Por implementar
+│       ├── inventario_compras/ # Por implementar
+│       └── reportes/           # Por implementar
+│
+├── src/main/resources/
+│   ├── application.properties  # Configuración (lee el .env)
+│   └── db/migration/           # Migraciones de BD con Flyway
+│
+├── src/test/                   # Pruebas
+├── funcionalidades/            # Documentación de cada caso de uso
+├── docs/                       # Guías (Flyway)
+├── Dockerfile                  # Imagen para Railway
+├── docker-compose.yml          # Prueba local del despliegue
+├── .env.example                # Plantilla de variables de entorno
+└── build.gradle                # Dependencias del proyecto
 ```
 
 Lo **global** (fuera de los módulos) sirve a toda la app: cualquier módulo puede lanzar

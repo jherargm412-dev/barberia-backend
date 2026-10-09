@@ -25,8 +25,8 @@ class ClienteControllerIT extends IntegracionBaseTest {
     @Test
     void recepcionistaGestionaClienteSinPerderHistorial() throws Exception {
         String admin = tokenAdmin();
-        crearUsuario(admin, recepcionista("recep.cu06@houseofcut.bo", "Clave123"));
-        String token = token("recep.cu06@houseofcut.bo", "Clave123");
+        crearUsuario(admin, recepcionista("recep.cu06@houseofcut.bo", "Clave123!"));
+        String token = token("recep.cu06@houseofcut.bo", "Clave123!");
         long antes = bitacoraRepository.countByAccion("CLIENTE_CREAR");
         MvcResult creado = mockMvc.perform(autorizado(post(URL), token)
                         .content(json(Map.of("nombre", "  Ana Pérez  ", "telefono", "71234567"))))
@@ -50,14 +50,24 @@ class ClienteControllerIT extends IntegracionBaseTest {
                 .andExpect(status().isOk()).andExpect(jsonPath("$.totalElementos").value(1));
         assertThat(bitacoraRepository.countByAccion("CLIENTE_ACTUALIZAR")).isEqualTo(1);
         assertThat(bitacoraRepository.countByAccion("CLIENTE_DESACTIVAR")).isEqualTo(1);
+
+        mockMvc.perform(autorizado(patch(URL + "/" + id + "/activar"), token))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.mensaje").value("Cliente activado correctamente"))
+                .andExpect(jsonPath("$.cliente.activo").value(true));
+        mockMvc.perform(autorizado(patch(URL + "/" + id + "/activar"), token))
+                .andExpect(status().isOk()).andExpect(jsonPath("$.cliente.activo").value(true));
+        mockMvc.perform(autorizado(get(URL).param("activo", "true").param("q", "Ana Pérez"), token))
+                .andExpect(status().isOk()).andExpect(jsonPath("$.totalElementos").value(1));
+        assertThat(bitacoraRepository.countByAccion("CLIENTE_ACTIVAR")).isEqualTo(1);
     }
 
     /** Los campos inválidos se rechazan y el Barbero no accede al módulo. */
     @Test
     void validaCamposYPermisos() throws Exception {
         String admin = tokenAdmin();
-        crearUsuario(admin, barbero("barbero.cu06@houseofcut.bo", "Clave123"));
-        String barbero = token("barbero.cu06@houseofcut.bo", "Clave123");
+        crearUsuario(admin, barbero("barbero.cu06@houseofcut.bo", "Clave123!"));
+        String barbero = token("barbero.cu06@houseofcut.bo", "Clave123!");
         mockMvc.perform(autorizado(post(URL), admin).content(json(Map.of("nombre", "  "))))
                 .andExpect(status().isBadRequest()).andExpect(jsonPath("$.campos.nombre").exists());
         mockMvc.perform(autorizado(post(URL), admin)
@@ -66,6 +76,7 @@ class ClienteControllerIT extends IntegracionBaseTest {
         mockMvc.perform(autorizado(get(URL), barbero)).andExpect(status().isForbidden());
         mockMvc.perform(autorizado(post(URL), barbero).content(json(Map.of("nombre", "Ana"))))
                 .andExpect(status().isForbidden());
+        mockMvc.perform(autorizado(patch(URL + "/1/activar"), barbero)).andExpect(status().isForbidden());
         mockMvc.perform(get(URL)).andExpect(status().isUnauthorized());
     }
 }

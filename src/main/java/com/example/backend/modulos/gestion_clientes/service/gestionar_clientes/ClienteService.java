@@ -90,6 +90,19 @@ public class ClienteService {
         return respuesta(cliente);
     }
 
+    /** Vuelve a marcar el registro como activo; una segunda solicitud no duplica la acción. */
+    @Transactional
+    public ClienteResponse activar(Integer id, UsuarioAutenticado actor) {
+        Cliente cliente = buscar(id);
+        if (cliente.isActivo()) return respuesta(cliente);
+        Map<String, Object> antes = snapshot(cliente);
+        cliente.setActivo(true);
+        cliente = clientes.saveAndFlush(cliente);
+        bitacora.registrar(usuarios.getReferenceById(actor.idUsuario()), "CLIENTE_ACTIVAR", "cliente",
+                "Activación del cliente '" + cliente.getNombre() + "'", antes, snapshot(cliente));
+        return respuesta(cliente);
+    }
+
     private Cliente buscar(Integer id) {
         return clientes.findById(id).orElseThrow(() -> new RecursoNoEncontradoException("Cliente no encontrado: " + id));
     }

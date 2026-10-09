@@ -9,12 +9,11 @@ import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.MediaType;
 import org.springframework.jdbc.core.JdbcTemplate;
-import org.springframework.test.web.servlet.MvcResult;
 import org.springframework.test.web.servlet.request.MockHttpServletRequestBuilder;
 import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
-
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -91,10 +90,10 @@ class ServicioControllerIT extends IntegracionBaseTest {
     @DisplayName("2. Recepcionista y Barbero: 403 en /servicios; 200 en /habilitados sin porcentajeComision")
     void permisosOtrosRoles() throws Exception {
         String admin = tokenAdmin();
-        crearUsuario(admin, recepcionista("recep.cu08@houseofcut.bo", "Clave123"));
-        crearUsuario(admin, barbero("barbero.cu08@houseofcut.bo", "Clave123"));
+        crearUsuario(admin, recepcionista("recep.cu08@houseofcut.bo", "Clave123!"));
+        crearUsuario(admin, barbero("barbero.cu08@houseofcut.bo", "Clave123!"));
         for (String correo : new String[]{"recep.cu08@houseofcut.bo", "barbero.cu08@houseofcut.bo"}) {
-            String token = token(correo, "Clave123");
+            String token = token(correo, "Clave123!");
             mockMvc.perform(conToken(get(URL), token)).andExpect(status().isForbidden());
             mockMvc.perform(conToken(get(URL + "/1"), token)).andExpect(status().isForbidden());
             mockMvc.perform(conToken(post(URL), token).content(json(servicio("X", 10, 40))))
@@ -105,6 +104,23 @@ class ServicioControllerIT extends IntegracionBaseTest {
                     .andExpect(jsonPath("$[0].precio").exists())
                     .andExpect(jsonPath("$[0].porcentajeComision").doesNotExist());
         }
+    }
+
+    @Test
+    @DisplayName("Rol solo con USUARIO_GESTIONAR (CU17 asigna servicios): 200 en /habilitados, 403 en /servicios")
+    void habilitadosParaGestionDeEmpleados() throws Exception {
+        String admin = tokenAdmin();
+        Map<String, Object> rol = Map.of("nombre", "Supervisor", "permisos", List.of("USUARIO_GESTIONAR"));
+        mockMvc.perform(conToken(post("/api/v1/roles"), admin).content(json(rol))).andExpect(status().isCreated());
+        Map<String, Object> usuario = new HashMap<>(cliente("supervisor.cu08@houseofcut.bo", "Clave123!"));
+        usuario.put("roles", List.of("Supervisor"));
+        crearUsuario(admin, usuario);
+
+        String token = token("supervisor.cu08@houseofcut.bo", "Clave123!");
+        mockMvc.perform(conToken(get(URL + "/habilitados"), token))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$[0].porcentajeComision").doesNotExist());
+        mockMvc.perform(conToken(get(URL), token)).andExpect(status().isForbidden());
     }
 
     @Test
