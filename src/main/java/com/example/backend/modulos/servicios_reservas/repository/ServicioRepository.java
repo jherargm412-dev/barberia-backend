@@ -30,4 +30,5 @@ public interface ServicioRepository extends JpaRepository<Servicio, Integer>, Jp
                                                      @Param("idServicio") Integer idServicio);
 
     List<Servicio> findByActivoTrueOrderByNombreAsc();
+    List<Servicio> findByActivoTrueOrderByPrecioDescNombreAsc();
 }
