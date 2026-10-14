@@ -92,8 +92,8 @@ class BitacoraControllerIT extends IntegracionBaseTest {
     @Test
     @DisplayName("2. Sin BITACORA_CONSULTAR: 403 'No tiene permiso para consultar la bitácora'; sin token: 401")
     void sinPermiso() throws Exception {
-        crearUsuario(tokenAdmin(), recepcionista("recep.cu05@houseofcut.bo", "Clave123"));
-        String recep = token("recep.cu05@houseofcut.bo", "Clave123");
+        crearUsuario(tokenAdmin(), recepcionista("recep.cu05@houseofcut.bo", "Clave123!"));
+        String recep = token("recep.cu05@houseofcut.bo", "Clave123!");
         for (String ruta : new String[]{URL, URL + "/1", URL + "/filtros"}) {
             mockMvc.perform(conToken(get(ruta), recep))
                     .andExpect(status().isForbidden())
@@ -173,7 +173,7 @@ class BitacoraControllerIT extends IntegracionBaseTest {
     void filtrosCombinados() throws Exception {
         String tokenAdmin = tokenAdmin();
         int admin = admin().getIdUsuario();
-        int barbero = crearUsuario(tokenAdmin, barbero("barbero.cu05@houseofcut.bo", "Clave123"));
+        int barbero = crearUsuario(tokenAdmin, barbero("barbero.cu05@houseofcut.bo", "Clave123!"));
         int esperado = registro(barbero, "COINCIDE", TABLA, "2026-09-05T10:00:00", null, null, null);
         registro(admin, "OTRO_USUARIO", TABLA, "2026-09-05T10:00:00", null, null, null);
         registro(barbero, "OTRA_TABLA", "otra_tabla", "2026-09-05T10:00:00", null, null, null);
@@ -211,7 +211,7 @@ class BitacoraControllerIT extends IntegracionBaseTest {
     @DisplayName("8 y 9. Detalle de un registro real de CU01: JSON como objeto e IP; el listado no los incluye")
     void detalleDeRegistroReal() throws Exception {
         String admin = tokenAdmin();
-        crearUsuario(admin, cliente("cliente.cu05@houseofcut.bo", "Clave123"));
+        crearUsuario(admin, cliente("cliente.cu05@houseofcut.bo", "Clave123!"));
         Bitacora creado = bitacoraRepository.findByAccionOrderByIdBitacoraDesc("USUARIO_CREAR").get(0);
 
         mockMvc.perform(conToken(get(URL + "/" + creado.getIdBitacora()), admin))

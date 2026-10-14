@@ -34,6 +34,7 @@ Si **cualquiera** falla → respuesta con mensaje único **"Error al ingresar"**
 |---|---|---|---|---|---|
 | Login exitoso | **Sí** (CU02 paso 4, RF5) | `INICIO_SESION` | el usuario que ingresó | `usuario` | `"Inicio de sesión exitoso"` |
 | Login fallido | **[PENDIENTE]** | — | — | — | `bitacora.usuario_id` es `NOT NULL`, así que un intento con correo inexistente no puede registrarse ahí sin cambiar el esquema. Si en el futuro se registra, requerirá otra tabla o hacer nullable la FK. Por ahora: **solo log de aplicación (WARN) sin datos sensibles**. |
+| Cuenta bloqueada (§5.2) | **Sí** | `BLOQUEO_CUENTA` | el usuario bloqueado | `usuario` | `"Cuenta bloqueada 30 minutos tras 3 intentos fallidos"` |
 | Logout | **Sí** | `CIERRE_SESION` | el usuario | `usuario` | `"Cierre de sesión"` |
 
 - El código `INICIO_SESION` es el que usa la semilla de la entrega (`bitacora` fila 1). Mantenerlo tal cual.
@@ -82,25 +83,29 @@ Mecanismo de sesión — [PROPUESTO]: **JWT firmado (HS256 o RS256), stateless**
 
 ## 5. Reglas explícitamente PENDIENTES
 
-Estas cinco reglas **no están definidas en la entrega** y el equipo decidió **no definirlas todavía**. Implementar exactamente el mínimo indicado y dejar el punto de extensión.
+Estas reglas **no estaban definidas en la entrega**. 5.1 y 5.2 ya se definieron e implementaron; 5.3, 5.4 y 5.5 siguen pendientes: implementar exactamente el mínimo indicado y dejar el punto de extensión.
 
-### 5.1 Política de contraseña — [PENDIENTE]
+### 5.1 Política de contraseña — [DEFINIDO]
 
 | | |
 |---|---|
 | Qué dice la entrega | CU04 menciona "la contraseña no cumple requisitos" pero no define los requisitos. |
-| Mínimo a implementar hoy | Contraseña **no vacía**. Nada más. |
-| Punto de extensión | Un único componente `PasswordPolicy` (interfaz con método `validar(String) : List<String> errores`) usado por CU01 (registro y restablecimiento) y en el futuro por CU04. Implementación actual: `NoVaciaPasswordPolicy`. Cambiar la política = cambiar la implementación, sin tocar controladores ni servicios. |
-| Valores a decidir después | Longitud mínima, mayúsculas/minúsculas/dígitos/símbolos, prohibir contraseñas comunes, prohibir reutilizar el correo. |
+| Regla | Mínimo **8 caracteres**, con al menos **una mayúscula, una minúscula, un número y un carácter especial** (cualquier carácter que no sea letra, número ni espacio). |
+| Dónde se aplica | Solo al **fijar** una contraseña: CU01 registrar y restablecer, CU04 cambiar la propia y CU17 registrar empleado. Las contraseñas ya guardadas siguen sirviendo para iniciar sesión. |
+| Respuesta | 400 `La contraseña no cumple los requisitos`, con un mensaje por cada requisito que falta en `campos.contrasena` (`campos.contrasenaNueva` en CU04), separados por `; `. |
+| Implementación | Interfaz `PasswordPolicy`, implementación `PoliticaContrasenaSegura`. El frontend repite la misma regla en `shared/utils/politicaContrasena.ts` y muestra los requisitos mientras se escribe. |
+| A decidir después | Prohibir contraseñas comunes o reutilizar el correo. |
 
-### 5.2 Bloqueo tras intentos fallidos — [PENDIENTE]
+### 5.2 Bloqueo tras intentos fallidos — [DEFINIDO]
 
 | | |
 |---|---|
-| Qué dice la entrega | Nada. `usuario.estado` incluye `SUSPENDIDO` pero ningún CU lo usa. |
-| Mínimo a implementar hoy | Ninguno. No contar intentos. No bloquear. |
-| Punto de extensión | El `AuthService` debe tener dos *hooks* vacíos: `onLoginFallido(correo, ip)` y `onLoginExitoso(usuario)`. Hoy solo escriben log. Cuando se defina la política, ahí se implementa el contador y el cambio a `SUSPENDIDO` (o un bloqueo temporal en memoria/Redis). El DDL actual no tiene columnas de intentos; se evaluará entonces si se agregan. |
-| Valores a decidir después | Nº de intentos, ventana de tiempo, duración del bloqueo, si es por cuenta o por IP, si usa `SUSPENDIDO` o un mecanismo temporal, quién puede desbloquear. |
+| Qué dice la entrega | Nada. `Ciclo#1.md` lo lista como funcionalidad extra de CU02. |
+| Regla | **3 contraseñas incorrectas seguidas** bloquean la **cuenta** (no la IP) durante **30 minutos**. Un login correcto reinicia el contador. Al vencer el bloqueo, la cuenta vuelve a entrar sola. |
+| Mientras está bloqueada | El login responde **423** `Cuenta bloqueada por intentos fallidos. Intente de nuevo en N minutos`, **aunque la contraseña sea correcta**. Un correo inexistente responde siempre el 401 genérico. |
+| Bitácora | Al bloquear se registra `BLOQUEO_CUENTA` (tabla `usuario`, con `ip_origen` y `bloqueadoHasta` en `datos_nuevos`). |
+| Desbloqueo manual | El administrador, al **restablecer la contraseña** del usuario (CU01), levanta el bloqueo. |
+| Implementación | Columnas `usuario.intentos_fallidos` y `usuario.bloqueado_hasta` (migración V8), *hooks* `onLoginFallido` / `onLoginExitoso` de `AuthService`. No usa el estado `SUSPENDIDO`, que exige desbloqueo manual. Valores en `app.security.login.max-intentos` y `app.security.login.bloqueo-minutos`. |
 
 ### 5.3 Duración de la sesión — [PENDIENTE]
 
@@ -118,13 +123,18 @@ Estas cinco reglas **no están definidas en la entrega** y el equipo decidió **
 | Mínimo a implementar hoy | Logout registra bitácora y devuelve 204; el token sigue siendo válido hasta `exp` (stateless). Deshabilitación: como los permisos se recalculan desde BD y `estado` se verifica en cada request autenticado (ver §6), un usuario deshabilitado **queda sin acceso de inmediato** aunque su token no haya expirado. |
 | Punto de extensión | *Blacklist* de tokens (Redis o tabla) o `jti` + versión de sesión en `usuario`, para invalidar tokens en logout real. Decidir junto con 5.3. |
 
-### 5.5 Recuperación de contraseña — [PENDIENTE] / fuera de alcance
+### 5.5 Recuperación de contraseña — [DEFINIDO]
 
 | | |
 |---|---|
-| Qué dice la entrega | No hay ningún CU de "olvidé mi contraseña" en los 28 casos de uso. El único mecanismo es que el **Administrador la restablece** vía CU01 ("actualiza… la contraseña de un usuario que los olvidó"). |
-| Mínimo a implementar hoy | Nada de autoservicio. El restablecimiento es `PATCH /usuarios/{id}/contrasena` (CU01). |
-| Punto de extensión | Si se agrega en el futuro será un CU nuevo (envío de correo, token de un solo uso, expiración). No preparar nada ahora. |
+| Qué dice la entrega | No hay un CU de "olvidé mi contraseña" en los 28 casos de uso; `Ciclo#1.md` lo lista como funcionalidad extra de CU02. El equipo decidió implementarlo. El restablecimiento por el Administrador (CU01) se mantiene. |
+| Flujo | 1) `POST /api/v1/auth/recuperar/codigo` `{correo}` → se envía un **código de 6 dígitos** por correo. 2) `POST /api/v1/auth/recuperar` `{correo, codigo, contrasenaNueva, confirmacion}` → fija la nueva contraseña. Ambos son públicos (sin token). Vale para todos los usuarios activos, clientes incluidos. |
+| Código | Dura **5 minutos**, es de **un solo uso** y se guarda **cifrado** (bcrypt, tabla `codigo_recuperacion`, migración V9). Pedir uno nuevo anula los anteriores. |
+| Intentos | **3** códigos incorrectos anulan el código ("Le quedan N intentos" / "Se agotaron los intentos"). La confirmación y la política de contraseña (§5.1) se validan antes y no gastan intentos. |
+| Límite de solicitudes | Más de **3** solicitudes en **30 minutos** → **429** `Demasiadas solicitudes. Intente de nuevo en N minutos`. |
+| Privacidad | Correo inexistente o cuenta no activa: misma respuesta 200 (`Si el correo está registrado, te enviamos un código…`) y no se envía nada. |
+| Efectos | Al recuperar, se levanta el bloqueo por intentos de login (§5.2). Bitácora: `RECUPERAR_CONTRASENA_SOLICITAR` (tabla `codigo_recuperacion`) y `RECUPERAR_CONTRASENA` (tabla `usuario`). |
+| Correo | Gmail del proyecto vía SMTP (`MAIL_USERNAME` / `MAIL_PASSWORD` en `.env`, contraseña de aplicación de Google). Si el servidor de correo falla → **503** y no se guarda el código. Sin `MAIL_USERNAME`, el correo se escribe en el log del backend (solo para desarrollo). Valores en `app.recuperacion.*`. |
 
 ---
 

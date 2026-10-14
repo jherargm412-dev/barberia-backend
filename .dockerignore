@@ -1,0 +1,14 @@
+# Lo que NO entra a la imagen de Docker: compilados locales, secretos y documentación.
+.git
+.gradle
+build
+bin
+.idea
+.vscode
+.env
+.env.*
+funcionalidades
+docs
+Base de Datos
+*.md
+docker-compose.yml

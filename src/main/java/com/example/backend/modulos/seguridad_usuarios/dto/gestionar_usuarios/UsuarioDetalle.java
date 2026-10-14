@@ -17,5 +17,7 @@ public record UsuarioDetalle(
         LocalDateTime fechaCreacion,
         List<RolResumen> roles,
         EmpleadoDetalle empleado,
-        ClienteDetalle cliente) {
+        ClienteDetalle cliente,
+        /** Invitación por correo que todavía no aceptó; null si no tiene. */
+        InvitacionPendiente invitacion) {
 }

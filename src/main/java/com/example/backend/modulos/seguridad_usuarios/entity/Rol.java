@@ -4,6 +4,7 @@ import jakarta.persistence.*;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
+import org.hibernate.annotations.BatchSize;
 
 import java.util.LinkedHashSet;
 import java.util.Set;
@@ -23,6 +24,9 @@ public class Rol {
     /** Roles cuyos usuarios son empleados (tienen fila en {@code empleado}). */
     public static final Set<String> ROLES_EMPLEADO = Set.of(ADMINISTRADOR, RECEPCIONISTA, BARBERO);
 
+    /** Roles de la semilla: el código depende de su nombre, por eso CU03 no permite renombrarlos. */
+    public static final Set<String> ROLES_SISTEMA = Set.of(ADMINISTRADOR, RECEPCIONISTA, BARBERO, CLIENTE);
+
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     @Column(name = "id_rol")
@@ -41,9 +45,18 @@ public class Rol {
     @JoinTable(name = "rol_permiso",
             joinColumns = @JoinColumn(name = "rol_id"),
             inverseJoinColumns = @JoinColumn(name = "permiso_id"))
+    @BatchSize(size = 50)
     private Set<Permiso> permisos = new LinkedHashSet<>();
 
     public boolean esRolDeEmpleado() {
         return ROLES_EMPLEADO.contains(nombre);
+    }
+
+    public boolean esRolDelSistema() {
+        return ROLES_SISTEMA.contains(nombre);
+    }
+
+    public boolean esAdministrador() {
+        return ADMINISTRADOR.equals(nombre);
     }
 }

@@ -46,8 +46,7 @@ public class UsuarioController {
     @PreAuthorize("hasAuthority('USUARIO_GESTIONAR') and hasAuthority('ROL_ASIGNAR')")
     public RespuestaRegistro registrar(@Valid @RequestBody CrearUsuarioRequest peticion,
                                        @AuthenticationPrincipal UsuarioAutenticado actor) {
-        UsuarioDetalle creado = usuarioService.registrar(peticion, actor);
-        return new RespuestaRegistro(RespuestaRegistro.MENSAJE_REGISTRO, creado);
+        return usuarioService.registrar(peticion, actor);
     }
 
     /** 3b: actualizar datos y roles. */
@@ -57,6 +56,12 @@ public class UsuarioController {
                                      @Valid @RequestBody ActualizarUsuarioRequest peticion,
                                      @AuthenticationPrincipal UsuarioAutenticado actor) {
         return usuarioService.actualizar(id, peticion, actor);
+    }
+
+    /** Reenviar la invitación por correo a un usuario que todavía no eligió su contraseña. */
+    @PostMapping("/{id}/invitacion")
+    public UsuarioDetalle reenviarInvitacion(@PathVariable Integer id, @AuthenticationPrincipal UsuarioAutenticado actor) {
+        return usuarioService.reenviarInvitacion(id, actor);
     }
 
     /** 3b: restablecer contraseña. */
