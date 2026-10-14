@@ -24,9 +24,11 @@ import org.springframework.security.core.Authentication;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.DayOfWeek;
 import java.time.LocalDate;
 import java.time.ZoneId;
 import java.time.format.DateTimeParseException;
+import java.time.temporal.TemporalAdjusters;
 import java.util.Comparator;
 import java.util.List;
 import java.util.Locale;
@@ -49,11 +51,17 @@ public class AgendaService {
     public static final int TAMANO_HISTORIAL = 5;
     public static final String MSG_FECHA = "La fecha ingresada no es válida";
     public static final String MSG_ESTADO = "Estado no válido";
+    public static final String MSG_VISTA = "Vista no válida";
     public static final String MSG_NO_ENCONTRADA = "La cita no existe o no está en su agenda";
 
-    /** Orden de la agenda: por barbero (citas sin barbero al final) y luego por hora de inicio. */
+    /** Vistas de la agenda: un día o la semana (lunes a domingo) que contiene la fecha. */
+    public static final String VISTA_DIA = "DIA";
+    public static final String VISTA_SEMANA = "SEMANA";
+
+    /** Orden de la agenda: por día, por barbero (citas sin barbero al final) y luego por hora de inicio. */
     private static final Comparator<CitaAgendaResponse> ORDEN_AGENDA = Comparator
-            .comparing((CitaAgendaResponse c) -> c.barbero() == null)
+            .comparing((CitaAgendaResponse c) -> c.fecha())
+            .thenComparing((CitaAgendaResponse c) -> c.barbero() == null)
             .thenComparing((CitaAgendaResponse c) -> c.barbero() == null ? "" : c.barbero().nombre())
             .thenComparing((CitaAgendaResponse c) -> c.horaInicio())
             .thenComparing((CitaAgendaResponse c) -> c.idReserva());
@@ -62,14 +70,20 @@ public class AgendaService {
     private final EmpleadoRepository empleadoRepository;
     private final AgendaMapper mapper;
 
-    /** Citas de un día (por defecto, hoy). Sin paginar: un día de un local cabe en una respuesta. */
+    /**
+     * Citas de un día (por defecto, hoy) o de su semana, de lunes a domingo. Sin paginar: siete días de
+     * un local caben en una respuesta. Solo lee reservas: no depende de los horarios de CU09 ni de CU10.
+     */
     @Transactional(readOnly = true)
-    public List<CitaAgendaResponse> listar(String fecha, String estado, Integer barberoId,
+    public List<CitaAgendaResponse> listar(String fecha, String vista, String estado, Integer barberoId,
                                            UsuarioAutenticado actor, Authentication autenticacion) {
         LocalDate dia = fecha == null || fecha.isBlank() ? LocalDate.now(ZONA_HORARIA) : parsearFecha(fecha);
+        boolean semana = VISTA_SEMANA.equals(normalizarVista(vista));
+        LocalDate desde = semana ? dia.with(TemporalAdjusters.previousOrSame(DayOfWeek.MONDAY)) : dia;
+        LocalDate hasta = semana ? desde.plusDays(6) : dia;
         Specification<Reserva> filtro = Specification.allOf(
-                ReservaSpecifications.desde(dia),
-                ReservaSpecifications.hasta(dia),
+                ReservaSpecifications.desde(desde),
+                ReservaSpecifications.hasta(hasta),
                 ReservaSpecifications.conEstado(normalizarEstado(estado)));
 
         if (puedeVerTodas(autenticacion)) {
@@ -142,6 +156,17 @@ public class AgendaService {
         } catch (DateTimeParseException e) {
             throw new ValidacionNegocioException(MSG_FECHA, Map.of("fecha", "Use el formato AAAA-MM-DD"));
         }
+    }
+
+    private static String normalizarVista(String vista) {
+        if (vista == null || vista.isBlank()) {
+            return VISTA_DIA;
+        }
+        String valor = vista.trim().toUpperCase(Locale.ROOT);
+        if (!VISTA_DIA.equals(valor) && !VISTA_SEMANA.equals(valor)) {
+            throw new ValidacionNegocioException(MSG_VISTA, Map.of("vista", "Use DIA o SEMANA"));
+        }
+        return valor;
     }
 
     private static String normalizarEstado(String estado) {

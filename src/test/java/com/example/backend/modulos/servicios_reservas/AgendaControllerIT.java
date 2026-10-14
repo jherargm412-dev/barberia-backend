@@ -12,7 +12,9 @@ import org.springframework.test.web.servlet.MvcResult;
 import org.springframework.test.web.servlet.request.MockHttpServletRequestBuilder;
 import tools.jackson.databind.JsonNode;
 
+import java.time.DayOfWeek;
 import java.time.LocalDate;
+import java.time.temporal.TemporalAdjusters;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -33,6 +35,8 @@ class AgendaControllerIT extends IntegracionBaseTest {
     private static final String PASS = "Clave123!";
     private static final LocalDate MANANA = LocalDate.now(AgendaService.ZONA_HORARIA).plusDays(1);
     private static final LocalDate PASADO_MANANA = MANANA.plusDays(1);
+    /** Lunes de una semana futura completa: CU11 no deja agendar en el pasado. */
+    private static final LocalDate LUNES = LocalDate.now(AgendaService.ZONA_HORARIA).with(TemporalAdjusters.next(DayOfWeek.MONDAY));
 
     @Autowired
     ServicioRepository servicioRepository;
@@ -218,6 +222,10 @@ class AgendaControllerIT extends IntegracionBaseTest {
         mockMvc.perform(conToken(get(AGENDA).param("fecha", MANANA.toString()), admin))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.length()").value(2));
+        mockMvc.perform(conToken(get(AGENDA + "/" + citaB), admin))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.cita.barbero.idEmpleado").value(barberoB))
+                .andExpect(jsonPath("$.historial.length()").value(1));
         mockMvc.perform(conToken(get(AGENDA + "/barberos"), recep))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$[?(@.idEmpleado == " + barberoA + ")].nombre").isNotEmpty())
@@ -347,5 +355,73 @@ class AgendaControllerIT extends IntegracionBaseTest {
                 .andExpect(jsonPath("$.length()").value(1))
                 .andExpect(jsonPath("$[0].idReserva").value(conBarbero));
         mockMvc.perform(conToken(get(AGENDA + "/" + sinBarbero), tokenBarbero)).andExpect(status().isNotFound());
+    }
+
+    @Test
+    @DisplayName("10. Vista semanal: siete días (lunes a domingo) de citas de CU11, en orden por día; fuera de la semana no aparecen")
+    void vistaSemanal() throws Exception {
+        String admin = tokenAdmin();
+        int corte = idServicio("Corte Clásico");
+        int barbero = nuevoBarbero(admin, "barbero10.cu16@houseofcut.bo", corte);
+        int cliente = nuevoCliente(admin, "Cliente Semana", "71110010");
+        String recep = crearYLoguear(admin, recepcionista("recep10.cu16@houseofcut.bo", PASS), "recep10.cu16@houseofcut.bo");
+        int domingo = registrarConCu11(recep, cita(cliente, corte, barbero, LUNES.plusDays(6), "12:00", "12:30", "PRESENCIAL"));
+        int jueves = registrarConCu11(recep, cita(cliente, corte, barbero, LUNES.plusDays(3), "11:00", "11:30", "TELEFONO"));
+        int lunes = registrarConCu11(recep, cita(cliente, corte, barbero, LUNES, "10:00", "10:30", "PRESENCIAL"));
+        registrarConCu11(recep, cita(cliente, corte, barbero, LUNES.plusDays(7), "10:00", "10:30", "PRESENCIAL"));
+
+        // Cualquier día de la semana devuelve la semana completa, ordenada por día.
+        mockMvc.perform(conToken(get(AGENDA).param("fecha", LUNES.plusDays(2).toString()).param("vista", "SEMANA"), recep))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.length()").value(3))
+                .andExpect(jsonPath("$[0].idReserva").value(lunes))
+                .andExpect(jsonPath("$[1].idReserva").value(jueves))
+                .andExpect(jsonPath("$[2].idReserva").value(domingo));
+        // La vista diaria sigue devolviendo solo ese día.
+        mockMvc.perform(conToken(get(AGENDA).param("fecha", LUNES.plusDays(3).toString()).param("vista", "dia"), recep))
+                .andExpect(jsonPath("$.length()").value(1))
+                .andExpect(jsonPath("$[0].idReserva").value(jueves));
+        // Los filtros también se aplican a la semana.
+        mockMvc.perform(conToken(get(AGENDA).param("fecha", LUNES.toString()).param("vista", "semana")
+                        .param("estado", "PENDIENTE"), recep))
+                .andExpect(jsonPath("$.length()").value(3));
+        // Un cambio hecho con CU11 se refleja en la semana.
+        mockMvc.perform(conToken(patch(RESERVAS + "/" + jueves + "/cancelar"), recep)).andExpect(status().isOk());
+        mockMvc.perform(conToken(get(AGENDA).param("fecha", LUNES.toString()).param("vista", "SEMANA")
+                        .param("estado", "CANCELADA"), recep))
+                .andExpect(jsonPath("$.length()").value(1))
+                .andExpect(jsonPath("$[0].idReserva").value(jueves));
+        mockMvc.perform(conToken(get(AGENDA).param("fecha", LUNES.toString()).param("vista", "MES"), recep))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.message").value(AgendaService.MSG_VISTA));
+    }
+
+    @Test
+    @DisplayName("11. Vista semanal del barbero: solo sus citas aunque envíe otro barbero; NO_ASISTIO se muestra con su estado")
+    void vistaSemanalDelBarbero() throws Exception {
+        String admin = tokenAdmin();
+        int corte = idServicio("Corte Clásico");
+        int barberoA = nuevoBarbero(admin, "barberoA11.cu16@houseofcut.bo", corte);
+        int barberoB = nuevoBarbero(admin, "barberoB11.cu16@houseofcut.bo", corte);
+        int cliente = nuevoCliente(admin, "Cliente Semana Barbero", "71110011");
+        String recep = crearYLoguear(admin, recepcionista("recep11.cu16@houseofcut.bo", PASS), "recep11.cu16@houseofcut.bo");
+        int citaA = registrarConCu11(recep, cita(cliente, corte, barberoA, LUNES.plusDays(1), "10:00", "10:30", "PRESENCIAL"));
+        registrarConCu11(recep, cita(cliente, corte, barberoB, LUNES.plusDays(2), "10:00", "10:30", "PRESENCIAL"));
+        // NO_ASISTIO solo se marca pasada la hora de la cita (CU11), así que se inserta directo.
+        int noAsistio = jdbcTemplate.queryForObject("""
+                INSERT INTO reserva (cliente_id, empleado_id, servicio_id, fecha, hora_inicio, hora_fin, canal, monto_anticipo, estado)
+                VALUES (?, ?, ?, ?, '14:00', '14:30', 'PRESENCIAL', 6.00, 'NO_ASISTIO') RETURNING id_reserva
+                """, Integer.class, cliente, barberoA, corte, LUNES.plusDays(4));
+        String tokenA = token("barberoA11.cu16@houseofcut.bo", PASS);
+
+        mockMvc.perform(conToken(get(AGENDA).param("fecha", LUNES.toString()).param("vista", "SEMANA")
+                        .param("barberoId", String.valueOf(barberoB)), tokenA))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.length()").value(2))
+                .andExpect(jsonPath("$[0].idReserva").value(citaA))
+                .andExpect(jsonPath("$[1].idReserva").value(noAsistio))
+                .andExpect(jsonPath("$[1].estado").value("NO_ASISTIO"));
+        mockMvc.perform(conToken(get(AGENDA).param("fecha", LUNES.toString()).param("vista", "SEMANA"), recep))
+                .andExpect(jsonPath("$.length()").value(3));
     }
 }

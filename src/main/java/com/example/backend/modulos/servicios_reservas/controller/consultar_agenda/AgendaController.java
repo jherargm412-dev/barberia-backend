@@ -28,15 +28,19 @@ public class AgendaController {
 
     private final AgendaService agendaService;
 
-    /** Citas de un día (hoy por defecto). Barbero: solo las suyas. Recepción y Administrador: todas. */
+    /**
+     * Citas de un día (hoy por defecto) o, con {@code vista=SEMANA}, de su semana de lunes a domingo.
+     * Barbero: solo las suyas. Recepción y Administrador: todas.
+     */
     @GetMapping
     @PreAuthorize("hasAnyAuthority('AGENDA_CONSULTAR', 'AGENDA_CONSULTAR_PROPIA')")
     public List<CitaAgendaResponse> listar(@RequestParam(required = false) String fecha,
+                                           @RequestParam(required = false) String vista,
                                            @RequestParam(required = false) String estado,
                                            @RequestParam(required = false) Integer barberoId,
                                            @AuthenticationPrincipal UsuarioAutenticado actor,
                                            Authentication autenticacion) {
-        return agendaService.listar(fecha, estado, barberoId, actor, autenticacion);
+        return agendaService.listar(fecha, vista, estado, barberoId, actor, autenticacion);
     }
 
     /** Barberos activos para el filtro de la agenda (solo Recepcionista y Administrador). */
