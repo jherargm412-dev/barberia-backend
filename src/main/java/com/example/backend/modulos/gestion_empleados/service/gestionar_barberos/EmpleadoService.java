@@ -123,6 +123,22 @@ public class EmpleadoService {
         return turnoRepository.findAll(Sort.by("idTurno")).stream().map(mapper::aTurno).toList();
     }
 
+    /**
+     * Regla base para agendar citas: barbero con cuenta ACTIVA y el servicio HABILITADO en
+     * empleado_servicio. CU09 la amplía con fecha y hora en DisponibilidadService.
+     */
+    @Transactional(readOnly = true)
+    public boolean estaDisponibleParaCitas(Integer empleadoId, Integer servicioId) {
+        if (empleadoId == null || servicioId == null) {
+            return false;
+        }
+        return empleadoRepository.findById(empleadoId)
+                .filter(e -> e.getUsuario().estaActivo() && e.getUsuario().tieneRol(Rol.BARBERO))
+                .flatMap(e -> empleadoServicioRepository.findById(new EmpleadoServicio.Id(empleadoId, servicioId)))
+                .map(EmpleadoServicio::estaHabilitado)
+                .orElse(false);
+    }
+
     // ---------- Registrar (paso 2: usuario → rol_usuario → empleado) ----------
 
     /** Con {@code enviarInvitacion} no se pide contraseña: se envía un enlace para que el empleado la elija. */
