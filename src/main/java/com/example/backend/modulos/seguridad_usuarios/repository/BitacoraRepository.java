@@ -17,6 +17,9 @@ public interface BitacoraRepository extends JpaRepository<Bitacora, Integer>, Jp
 
     List<Bitacora> findByAccionOrderByIdBitacoraDesc(String accion);
 
+    /** CU04 extra: últimos inicios de sesión del propio usuario (usa idx_bitacora_usuario_fecha). */
+    List<Bitacora> findTop10ByUsuario_IdUsuarioAndAccionOrderByFechaHoraDesc(Integer idUsuario, String accion);
+
     /** Listado de CU05: trae al usuario responsable en la misma consulta (sin N+1). */
     @Override
     @EntityGraph(attributePaths = "usuario")

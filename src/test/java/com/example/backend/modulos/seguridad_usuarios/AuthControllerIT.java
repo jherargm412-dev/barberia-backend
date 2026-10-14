@@ -62,8 +62,8 @@ class AuthControllerIT extends IntegracionBaseTest {
     @DisplayName("3-7. Correo inexistente, contraseña incorrecta, INACTIVO y SUSPENDIDO: 401 idéntico y sin bitácora")
     void fallosDeLogin() throws Exception {
         String admin = tokenAdmin();
-        crearUsuario(admin, barbero("inactivo@houseofcut.bo", "Clave123"));
-        crearUsuario(admin, barbero("suspendido@houseofcut.bo", "Clave123"));
+        crearUsuario(admin, barbero("inactivo@houseofcut.bo", "Clave123!"));
+        crearUsuario(admin, barbero("suspendido@houseofcut.bo", "Clave123!"));
         Usuario inactivo = usuarioRepository.findByCorreo("inactivo@houseofcut.bo").orElseThrow();
         inactivo.setEstado(EstadoUsuario.INACTIVO);
         Usuario suspendido = usuarioRepository.findByCorreo("suspendido@houseofcut.bo").orElseThrow();
@@ -75,8 +75,8 @@ class AuthControllerIT extends IntegracionBaseTest {
         List<MvcResult> fallos = List.of(
                 loginResultado("no.existe@houseofcut.bo", "loquesea"),
                 loginResultado(ADMIN_CORREO, "incorrecta"),
-                loginResultado("inactivo@houseofcut.bo", "Clave123"),
-                loginResultado("suspendido@houseofcut.bo", "Clave123"));
+                loginResultado("inactivo@houseofcut.bo", "Clave123!"),
+                loginResultado("suspendido@houseofcut.bo", "Clave123!"));
 
         String referencia = null;
         for (MvcResult r : fallos) {
@@ -100,8 +100,8 @@ class AuthControllerIT extends IntegracionBaseTest {
     @DisplayName("8. Token válido de un usuario luego deshabilitado: 401")
     void tokenDeUsuarioDeshabilitado() throws Exception {
         String admin = tokenAdmin();
-        int id = crearUsuario(admin, recepcionista("recep.deshab@houseofcut.bo", "Clave123"));
-        String tokenRecep = token("recep.deshab@houseofcut.bo", "Clave123");
+        int id = crearUsuario(admin, recepcionista("recep.deshab@houseofcut.bo", "Clave123!"));
+        String tokenRecep = token("recep.deshab@houseofcut.bo", "Clave123!");
         mockMvc.perform(get("/api/v1/auth/me").header("Authorization", bearer(tokenRecep)))
                 .andExpect(status().isOk());
 
@@ -141,8 +141,8 @@ class AuthControllerIT extends IntegracionBaseTest {
         mockMvc.perform(get("/api/v1/usuarios")).andExpect(status().isUnauthorized())
                 .andExpect(jsonPath("$.status").value(401));
         String admin = tokenAdmin();
-        crearUsuario(admin, cliente("cliente.sinpermiso@houseofcut.bo", "Clave123"));
-        String tokenCliente = token("cliente.sinpermiso@houseofcut.bo", "Clave123");
+        crearUsuario(admin, cliente("cliente.sinpermiso@houseofcut.bo", "Clave123!"));
+        String tokenCliente = token("cliente.sinpermiso@houseofcut.bo", "Clave123!");
         mockMvc.perform(get("/api/v1/usuarios").header("Authorization", bearer(tokenCliente)))
                 .andExpect(status().isForbidden())
                 .andExpect(jsonPath("$.status").value(403));
@@ -170,8 +170,8 @@ class AuthControllerIT extends IntegracionBaseTest {
     @Test
     @DisplayName("Permisos efectivos del Barbero: exactamente los 4 de la matriz")
     void permisosBarbero() throws Exception {
-        crearUsuario(tokenAdmin(), barbero("barbero.permisos@houseofcut.bo", "Clave123"));
-        JsonNode usuario = leer(loginResultado("barbero.permisos@houseofcut.bo", "Clave123")).get("usuario");
+        crearUsuario(tokenAdmin(), barbero("barbero.permisos@houseofcut.bo", "Clave123!"));
+        JsonNode usuario = leer(loginResultado("barbero.permisos@houseofcut.bo", "Clave123!")).get("usuario");
         assertThat(usuario.get("permisos").valueStream().map(JsonNode::asString).toList())
                 .containsExactlyInAnyOrder("PERFIL_EDITAR", "AGENDA_CONSULTAR_PROPIA",
                         "SERVICIO_CONSULTAR", "COMISION_CONSULTAR_PROPIA");

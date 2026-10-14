@@ -7,6 +7,7 @@ import com.example.backend.modulos.seguridad_usuarios.entity.Usuario;
 import com.example.backend.modulos.seguridad_usuarios.repository.ClienteRepository;
 import com.example.backend.modulos.seguridad_usuarios.repository.EmpleadoRepository;
 import com.example.backend.modulos.seguridad_usuarios.dto.gestionar_usuarios.*;
+import com.example.backend.modulos.seguridad_usuarios.service.aceptar_invitacion.InvitacionService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Component;
 
@@ -20,6 +21,7 @@ public class UsuarioMapper {
 
     private final EmpleadoRepository empleadoRepository;
     private final ClienteRepository clienteRepository;
+    private final InvitacionService invitacionService;
 
     public UsuarioDetalle aDetalle(Usuario u) {
         EmpleadoDetalle empleado = empleadoRepository.findByUsuario_IdUsuario(u.getIdUsuario())
@@ -28,7 +30,8 @@ public class UsuarioMapper {
                 .map(this::aClienteDetalle).orElse(null);
         return new UsuarioDetalle(
                 u.getIdUsuario(), u.getNombre(), u.getCorreo(), u.getTelefono(), u.getFechaNacimiento(),
-                u.getEstado(), u.getFechaCreacion(), rolesDe(u), empleado, cliente);
+                u.getEstado(), u.getFechaCreacion(), rolesDe(u), empleado, cliente,
+                invitacionService.pendiente(u.getIdUsuario()));
     }
 
     public UsuarioResumen aResumen(Usuario u) {

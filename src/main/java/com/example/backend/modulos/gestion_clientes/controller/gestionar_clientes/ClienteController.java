@@ -53,4 +53,11 @@ public class ClienteController {
     public RespuestaCliente desactivar(@PathVariable Integer id, @AuthenticationPrincipal UsuarioAutenticado actor) {
         return new RespuestaCliente("Cliente desactivado correctamente", servicio.desactivar(id, actor));
     }
+
+    /** Revierte la desactivación: el cliente vuelve a figurar como activo. */
+    @PatchMapping("/{id}/activar")
+    @PreAuthorize("hasAuthority('CLIENTE_EDITAR')")
+    public RespuestaCliente activar(@PathVariable Integer id, @AuthenticationPrincipal UsuarioAutenticado actor) {
+        return new RespuestaCliente("Cliente activado correctamente", servicio.activar(id, actor));
+    }
 }
