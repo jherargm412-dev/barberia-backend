@@ -7,6 +7,7 @@ import com.example.backend.exception.ValidacionNegocioException;
 import com.example.backend.modulos.gestion_empleados.dto.gestionar_barberos.*;
 import com.example.backend.modulos.gestion_empleados.entity.EmpleadoServicio;
 import com.example.backend.modulos.gestion_empleados.entity.EstadoEmpleadoServicio;
+import com.example.backend.modulos.gestion_empleados.entity.EstadoEspecialidad;
 import com.example.backend.modulos.gestion_empleados.mapper.gestionar_barberos.EmpleadoMapper;
 import com.example.backend.modulos.gestion_empleados.repository.EmpleadoServicioRepository;
 import com.example.backend.modulos.gestion_empleados.repository.EmpleadoSpecifications;
@@ -243,7 +244,7 @@ public class EmpleadoService {
         for (Integer idServicio : pedidos) {
             Servicio s = servicios.get(idServicio);
             EmpleadoServicio actual = porServicio.get(idServicio);
-            boolean yaHabilitado = actual != null && actual.estaHabilitado();
+            boolean yaHabilitado = actual != null && actual.estaHabilitada();
             if (s == null || (!s.isActivo() && !yaHabilitado)) {
                 invalidos.add(String.valueOf(idServicio));
             }
@@ -257,11 +258,12 @@ public class EmpleadoService {
         List<String> quitados = new ArrayList<>();
         for (EmpleadoServicio r : relaciones) {
             boolean debeEstar = pedidos.contains(r.getServicio().getIdServicio());
-            if (debeEstar && !r.estaHabilitado()) {
-                r.setEstado(EstadoEmpleadoServicio.HABILITADO);
+            if (debeEstar && !r.estaHabilitada()
+            ) {
+                r.setEstado(EstadoEspecialidad.HABILITADO);
                 agregados.add(r.getServicio().getNombre());
-            } else if (!debeEstar && r.estaHabilitado()) {
-                r.setEstado(EstadoEmpleadoServicio.INHABILITADO);
+            } else if (!debeEstar && r.estaHabilitada()) {
+                r.setEstado(EstadoEspecialidad.INHABILITADO);
                 quitados.add(r.getServicio().getNombre());
             }
         }
@@ -380,7 +382,7 @@ public class EmpleadoService {
     }
 
     private static Set<String> nombresHabilitados(List<EmpleadoServicio> relaciones) {
-        return relaciones.stream().filter(EmpleadoServicio::estaHabilitado)
+        return relaciones.stream().filter(EmpleadoServicio::estaHabilitada)
                 .map(r -> r.getServicio().getNombre()).collect(Collectors.toCollection(TreeSet::new));
     }
 
