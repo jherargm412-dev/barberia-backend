@@ -99,7 +99,8 @@ public abstract class IntegracionBaseTest {
                 "contrasena", contrasena,
                 "telefono", "71234567",
                 "roles", java.util.List.of("Barbero"),
-                "empleado", Map.of("tipoContrato", "COMISIONISTA", "especialidad", "Degradados", "turnoId", 1));
+                // servicios: 2 = "Corte Degradado (Fade)" en la semilla de V3 (su especialidad).
+                "empleado", Map.of("tipoContrato", "COMISIONISTA", "turnoId", 1, "servicios", java.util.List.of(2)));
     }
 
     protected Map<String, Object> recepcionista(String correo, String contrasena) {

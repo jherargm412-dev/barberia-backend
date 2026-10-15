@@ -1,7 +1,7 @@
 package com.example.backend.modulos.seguridad_usuarios.dto.gestionar_usuarios;
 
 import com.example.backend.modulos.seguridad_usuarios.entity.TipoContrato;
-import jakarta.validation.constraints.Size;
+import java.util.List;
 
 /**
  * Datos de empleado. Obligatorio (con {@code tipoContrato}) cuando algún rol es
@@ -10,7 +10,10 @@ import jakarta.validation.constraints.Size;
  */
 public record EmpleadoRequest(
         TipoContrato tipoContrato,
-        @Size(max = 80, message = "El campo empleado.especialidad admite máximo 80 caracteres")
-        String especialidad,
-        Integer turnoId) {
+        Integer turnoId,
+        /**
+         * Especialidades = servicios del catálogo que realiza (CU17). Solo se usan si el rol es Barbero;
+         * quedan HABILITADOS en empleado_servicio. null = no cambiar (al editar).
+         */
+        List<Integer> servicios) {
 }
