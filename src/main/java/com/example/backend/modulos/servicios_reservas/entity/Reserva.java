@@ -4,6 +4,7 @@ import com.example.backend.modulos.seguridad_usuarios.entity.Cliente;
 import com.example.backend.modulos.seguridad_usuarios.entity.Empleado;
 import jakarta.persistence.*;
 import lombok.Getter;
+import org.hibernate.annotations.Formula;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
 
@@ -77,6 +78,13 @@ public class Reserva {
     /** PENDIENTE, CONFIRMADA, ATENDIDA, CANCELADA o NO_ASISTIO (CHECK de la tabla). */
     @Column(name = "estado", nullable = false, length = 20)
     private String estado = PENDIENTE;
+
+    /**
+     * ¿Ya se cobró su anticipo (CU14)? Se calcula al leer la cita (subconsulta a pago_anticipo), así las
+     * listas no hacen una consulta extra por cita. Solo lectura: lo escribe CU14 al guardar el pago.
+     */
+    @Formula("(select count(*) > 0 from pago_anticipo p where p.reserva_id = id_reserva)")
+    private boolean anticipoPagado;
 
     /** ATENDIDA, CANCELADA y NO_ASISTIO son finales: la cita ya no se reprograma ni cambia de estado. */
     public boolean estaFinalizada() {

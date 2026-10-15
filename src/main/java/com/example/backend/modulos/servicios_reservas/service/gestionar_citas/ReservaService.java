@@ -66,7 +66,6 @@ public class ReservaService {
     public static final int TOLERANCIA_MINUTOS = 15;
     /** CU10 paso C: citas que ocupan el horario del barbero. */
     public static final List<String> OCUPAN_HORARIO = ConsultaDisponibilidadService.OCUPAN_HORARIO;
-    private static final List<String> ESTADOS_INICIALES = List.of(Reserva.PENDIENTE, Reserva.CONFIRMADA);
     /** La recepción no usa WEB (CU12). */
     private static final List<String> CANALES_RECEPCION =
             List.of(Reserva.CANAL_PRESENCIAL, Reserva.CANAL_TELEFONO, Reserva.CANAL_WHATSAPP);
@@ -78,7 +77,9 @@ public class ReservaService {
     public static final String MSG_CANAL_WEB = "El canal WEB es exclusivo de las solicitudes en línea";
     public static final String MSG_CANAL_INVALIDO = "El canal debe ser PRESENCIAL, TELEFONO o WHATSAPP";
     public static final String MSG_ESTADO_INVALIDO = "Estado no válido";
-    public static final String MSG_ESTADO_INICIAL = "Una cita nueva solo puede quedar Pendiente o Confirmada";
+    public static final String MSG_ESTADO_INICIAL =
+            "Una cita nueva queda Pendiente; se confirma al registrar el pago del anticipo";
+    public static final String MSG_CONFIRMAR_SIN_PAGO = "Para confirmar la cita registre el pago del anticipo";
     public static final String MSG_CLIENTE_INVALIDO = "El cliente no existe";
     public static final String MSG_SERVICIO_INVALIDO = "El servicio no existe o está inhabilitado";
     public static final String MSG_BARBERO_INVALIDO = "El barbero no existe, está desvinculado o no tiene rol Barbero";
@@ -169,9 +170,9 @@ public class ReservaService {
         } else if (!CANALES_RECEPCION.contains(canal)) {
             invalidos.agregar("canal", MSG_CANAL_INVALIDO);
         }
+        // Confirmar = cobrar: toda cita nace PENDIENTE y solo CU14 (con su pago e ingreso en caja) la confirma.
         String estadoPedido = normalizar(peticion.estado());
-        String estado = estadoPedido == null ? Reserva.PENDIENTE : estadoPedido;
-        if (!ESTADOS_INICIALES.contains(estado)) {
+        if (estadoPedido != null && !Reserva.PENDIENTE.equals(estadoPedido)) {
             invalidos.agregar("estado", MSG_ESTADO_INICIAL);
         }
         invalidos.lanzarSiHay(null);
@@ -181,7 +182,7 @@ public class ReservaService {
         Servicio servicio = servicioRepository.findById(peticion.servicioId()).filter(Servicio::isActivo)
                 .orElseThrow(() -> new ValidacionNegocioException(MSG_SERVICIO_INVALIDO, Map.of("servicioId", MSG_SERVICIO_INVALIDO)));
         return crearCita(cliente, servicio, peticion.empleadoId(), peticion.fecha(),
-                peticion.horaInicio(), peticion.horaFin(), canal, estado, actor);
+                peticion.horaInicio(), peticion.horaFin(), canal, Reserva.PENDIENTE, actor);
     }
 
     /**
@@ -270,9 +271,17 @@ public class ReservaService {
 
     // ---------- Cambio de estado y asistencia (paso 3) ----------
 
-    /** PENDIENTE → CONFIRMADA (el cliente pagó el anticipo o confirmó por teléfono/WhatsApp). */
+    /**
+     * PENDIENTE → CONFIRMADA. Confirmar = cobrar: la cita solo se confirma con el anticipo pagado (CU14), que
+     * ya la deja CONFIRMADA al cobrar. Sin pago se rechaza (409) para que no haya citas confirmadas sin dinero en caja.
+     */
     @Transactional
     public ReservaResponse confirmar(Integer id, UsuarioAutenticado actor) {
+        Reserva reserva = buscar(id);
+        if (!reserva.isAnticipoPagado() && !reserva.estaFinalizada()
+                && !Reserva.CONFIRMADA.equals(reserva.getEstado())) {
+            throw new ConflictoException(MSG_CONFIRMAR_SIN_PAGO);
+        }
         return cambiarEstado(id, Reserva.CONFIRMADA, RESERVA_CONFIRMAR, actor);
     }
 

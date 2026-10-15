@@ -119,6 +119,7 @@ public class PagoAnticipoService {
 
             Map<String, Object> antes = Map.of("estado", reserva.getEstado());
             reserva.setEstado(Reserva.CONFIRMADA);
+            reserva.setAnticipoPagado(true); // se calcula al leer (@Formula); aquí se actualiza la copia en memoria
             reservaRepository.saveAndFlush(reserva);
 
             bitacoraService.registrar(cobrador, ANTICIPO_REGISTRAR, TABLA_PAGO_ANTICIPO,

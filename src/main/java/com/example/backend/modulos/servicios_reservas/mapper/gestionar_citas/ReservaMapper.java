@@ -18,7 +18,7 @@ public class ReservaMapper {
         Servicio s = r.getServicio();
         Empleado e = r.getEmpleado();
         return new ReservaResponse(r.getIdReserva(), r.getFecha(), r.getHoraInicio(), r.getHoraFin(),
-                r.getCanal(), r.getEstado(), r.getMontoAnticipo(),
+                r.getCanal(), r.getEstado(), r.getMontoAnticipo(), r.isAnticipoPagado(),
                 new ReservaResponse.ClienteCita(c.getIdCliente(), c.getNombre(), c.getTelefono()),
                 new ReservaResponse.ServicioCita(s.getIdServicio(), s.getNombre(), s.getPrecio()),
                 e == null ? null : new ReservaResponse.BarberoCita(e.getIdEmpleado(), e.getUsuario().getNombre()));

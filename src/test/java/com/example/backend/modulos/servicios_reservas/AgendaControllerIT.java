@@ -165,7 +165,8 @@ class AgendaControllerIT extends IntegracionBaseTest {
                 .andExpect(jsonPath("$[0].horaInicio").value("11:00"))
                 .andExpect(jsonPath("$[0].horaFin").value("11:30"));
 
-        mockMvc.perform(conToken(patch(RESERVAS + "/" + idReserva + "/confirmar"), recep)).andExpect(status().isOk());
+        abrirCaja(recep);
+        cobrarAnticipo(recep, idReserva); // CU14 confirma la cita al cobrar el anticipo
         mockMvc.perform(conToken(get(AGENDA).param("fecha", PASADO_MANANA.toString()).param("estado", "CONFIRMADA"), recep))
                 .andExpect(jsonPath("$.length()").value(1))
                 .andExpect(jsonPath("$[0].estado").value("CONFIRMADA"));

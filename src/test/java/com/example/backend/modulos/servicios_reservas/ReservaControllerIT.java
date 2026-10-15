@@ -94,18 +94,20 @@ class ReservaControllerIT extends CitasBaseTest {
     }
 
     @Test
-    @DisplayName("2. Estado inicial CONFIRMADA si pagó el anticipo; ATENDIDA o canal WEB: 400; campos vacíos: 400 por campo")
+    @DisplayName("2. Una cita nueva solo nace PENDIENTE (CONFIRMADA o ATENDIDA: 400); canal WEB: 400; campos vacíos: 400 por campo")
     void validacionesDeEntrada() throws Exception {
         String admin = tokenAdmin();
         int corte = idServicio("Corte Clásico");
         int barbero = nuevoBarbero(admin, "barbero2.cu11@houseofcut.bo", corte);
         int cliente = nuevoCliente(admin, "Ana");
 
+        // Confirmar = cobrar: la cita se confirma solo al registrar el anticipo (CU14).
         Map<String, Object> confirmada = cita(cliente, corte, barbero, MANANA, "09:00", "09:30", "PRESENCIAL");
         confirmada.put("estado", "CONFIRMADA");
         mockMvc.perform(conToken(post(URL), admin).content(json(confirmada)))
-                .andExpect(status().isCreated())
-                .andExpect(jsonPath("$.reserva.estado").value("CONFIRMADA"));
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.campos.estado")
+                        .value("Una cita nueva queda Pendiente; se confirma al registrar el pago del anticipo"));
 
         Map<String, Object> atendida = cita(cliente, corte, barbero, MANANA, "11:00", "11:30", "PRESENCIAL");
         atendida.put("estado", "ATENDIDA");
@@ -214,9 +216,9 @@ class ReservaControllerIT extends CitasBaseTest {
         int otroBarbero = nuevoBarbero(admin, "barbero7.cu11@houseofcut.bo", corte);
         int cliente = nuevoCliente(admin, "María");
 
-        Map<String, Object> cuerpo = cita(cliente, corte, barbero, MANANA, "10:00", "10:30", "PRESENCIAL");
-        cuerpo.put("estado", "CONFIRMADA");
-        int id = registrar(admin, cuerpo);
+        int id = registrar(admin, cita(cliente, corte, barbero, MANANA, "10:00", "10:30", "PRESENCIAL"));
+        abrirCaja(admin);
+        cobrarAnticipo(admin, id); // CU14: queda CONFIRMADA
         registrar(admin, cita(cliente, corte, otroBarbero, MANANA, "12:00", "12:30", "PRESENCIAL"));
 
         Map<String, Object> nuevo = Map.of("empleadoId", otroBarbero, "fecha", MANANA.plusDays(1).toString(),
@@ -249,7 +251,7 @@ class ReservaControllerIT extends CitasBaseTest {
     }
 
     @Test
-    @DisplayName("6. Estados: confirmar es idempotente; atendida o no asistió antes de tiempo: 400; desde un estado final: 409")
+    @DisplayName("6. Estados: confirmar sin anticipo: 409; con anticipo es idempotente; atendida o no asistió antes de tiempo: 400; desde un estado final: 409")
     void cambiosDeEstado() throws Exception {
         String admin = tokenAdmin();
         int corte = idServicio("Corte Clásico");
@@ -257,9 +259,16 @@ class ReservaControllerIT extends CitasBaseTest {
         int cliente = nuevoCliente(admin, "Rosa");
         int futura = registrar(admin, cita(cliente, corte, barbero, MANANA, "10:00", "10:30", "PRESENCIAL"));
 
+        // Confirmar = cobrar: sin el anticipo de CU14 no se confirma.
+        mockMvc.perform(conToken(patch(URL + "/" + futura + "/confirmar"), admin))
+                .andExpect(status().isConflict())
+                .andExpect(jsonPath("$.message").value("Para confirmar la cita registre el pago del anticipo"));
+        abrirCaja(admin);
+        cobrarAnticipo(admin, futura);
         mockMvc.perform(conToken(patch(URL + "/" + futura + "/confirmar"), admin))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.reserva.estado").value("CONFIRMADA"));
+                .andExpect(jsonPath("$.reserva.estado").value("CONFIRMADA"))
+                .andExpect(jsonPath("$.reserva.anticipoPagado").value(true));
         long confirmaciones = bitacoraRepository.countByAccion("RESERVA_CONFIRMAR");
         mockMvc.perform(conToken(patch(URL + "/" + futura + "/confirmar"), admin)).andExpect(status().isOk());
         assertThat(bitacoraRepository.countByAccion("RESERVA_CONFIRMAR")).isEqualTo(confirmaciones);
