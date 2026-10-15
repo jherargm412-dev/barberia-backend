@@ -16,6 +16,7 @@ import com.example.backend.modulos.servicios_reservas.mapper.gestionar_horarios.
 import com.example.backend.modulos.servicios_reservas.repository.ExcepcionHorarioRepository;
 import com.example.backend.modulos.servicios_reservas.repository.HorarioAtencionConsultas;
 import com.example.backend.modulos.servicios_reservas.repository.HorarioBarberoRepository;
+import com.example.backend.modulos.servicios_reservas.repository.ReservaRepository;
 import com.example.backend.modulos.servicios_reservas.repository.ReservaConsultas;
 import com.example.backend.security.UsuarioAutenticado;
 import jakarta.persistence.PersistenceException;
@@ -78,6 +79,7 @@ public class HorarioBarberoService {
     private final UsuarioRepository usuarioRepository;
     private final HorarioBarberoRepository horarioBarberoRepository;
     private final ExcepcionHorarioRepository excepcionHorarioRepository;
+    private final ReservaRepository reservaRepository;
     private final HorarioAtencionConsultas horarioAtencionConsultas;
     private final ReservaConsultas reservaConsultas;
     private final BitacoraService bitacoraService;
@@ -133,7 +135,7 @@ public class HorarioBarberoService {
      */
     @Transactional
     public RespuestaHorario guardar(Integer empleadoId, GuardarHorarioRequest peticion, UsuarioAutenticado actor) {
-        Empleado empleado = buscarBarbero(empleadoId);
+        Empleado empleado = bloquearBarbero(empleadoId);
         exigirActivo(empleado);
         Map<DiaSemana, Franja> nuevo = validarDias(peticion);           // 7a, 7b
 
@@ -167,7 +169,7 @@ public class HorarioBarberoService {
     @Transactional
     public RespuestaExcepcion registrarExcepcion(Integer empleadoId, RegistrarExcepcionRequest peticion,
                                                  UsuarioAutenticado actor) {
-        Empleado empleado = buscarBarbero(empleadoId);
+        Empleado empleado = bloquearBarbero(empleadoId);
         exigirActivo(empleado);
 
         // 1. Obligatorios.
@@ -239,7 +241,7 @@ public class HorarioBarberoService {
     /** 4h: solo vigentes o futuras; borrado físico, el historial queda en la bitácora. */
     @Transactional
     public RespuestaMensaje eliminarExcepcion(Integer empleadoId, Integer idExcepcion, UsuarioAutenticado actor) {
-        Empleado empleado = buscarBarbero(empleadoId);
+        Empleado empleado = bloquearBarbero(empleadoId);
         exigirActivo(empleado);
         ExcepcionHorario excepcion = excepcionHorarioRepository.findById(idExcepcion)
                 .filter(e -> e.getEmpleado().getIdEmpleado().equals(empleadoId))
@@ -341,6 +343,18 @@ public class HorarioBarberoService {
     /** Barbero = empleado cuyo usuario tiene el rol Barbero (misma definición que CU17). */
     private Empleado buscarBarbero(Integer empleadoId) {
         return empleadoRepository.findById(empleadoId)
+                .filter(e -> e.getUsuario().tieneRol(Rol.BARBERO))
+                .orElseThrow(() -> new RecursoNoEncontradoException(MSG_BARBERO_NO_ENCONTRADO + empleadoId));
+    }
+
+    /**
+     * Igual que {@link #buscarBarbero}, pero bloquea la fila del barbero hasta el fin de la transacción, con el mismo
+     * bloqueo que usa CU11 al agendar ({@code ReservaRepository.bloquearEmpleado}). Así una cita que se agenda mientras
+     * se reduce el horario o se registran vacaciones no se cuela entre las dos validaciones, y dos excepciones
+     * simultáneas del mismo barbero tampoco se solapan.
+     */
+    private Empleado bloquearBarbero(Integer empleadoId) {
+        return reservaRepository.bloquearEmpleado(empleadoId)
                 .filter(e -> e.getUsuario().tieneRol(Rol.BARBERO))
                 .orElseThrow(() -> new RecursoNoEncontradoException(MSG_BARBERO_NO_ENCONTRADO + empleadoId));
     }

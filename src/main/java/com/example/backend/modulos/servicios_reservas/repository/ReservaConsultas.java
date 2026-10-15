@@ -13,7 +13,7 @@ import java.util.List;
 
 /**
  * Lectura de reservas para el CU09 (citas afectadas y solapes). SOLO LECTURA: este caso de uso
- * no crea, modifica ni cancela reservas. SQL nativo porque reserva no tiene entidad JPA todavía.
+ * no crea, modifica ni cancela reservas.
  */
 @Repository
 @RequiredArgsConstructor
@@ -30,12 +30,15 @@ public class ReservaConsultas {
               AND r.fecha >= ?
             ORDER BY r.fecha, r.hora_inicio""";
 
-    /** Misma condición de solape que sp_reprogramar_reserva: nueva.inicio < existente.fin AND nueva.fin > existente.inicio. */
+    /**
+     * Misma condición de solape que sp_reprogramar_reserva: nueva.inicio < existente.fin AND nueva.fin > existente.inicio.
+     * Ocupan el horario las mismas citas que en CU10 (ConsultaDisponibilidadService.OCUPAN_HORARIO): una sola regla.
+     */
     private static final String SQL_SOLAPE = """
             SELECT EXISTS (
                 SELECT 1 FROM reserva
                 WHERE empleado_id = ?
-                  AND estado IN ('PENDIENTE', 'CONFIRMADA')
+                  AND estado IN ('PENDIENTE', 'CONFIRMADA', 'ATENDIDA')
                   AND fecha = ?
                   AND ? < hora_fin AND ? > hora_inicio)""";
 
