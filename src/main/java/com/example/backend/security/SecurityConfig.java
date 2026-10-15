@@ -57,6 +57,8 @@ public class SecurityConfig {
                         .requestMatchers(HttpMethod.POST, "/api/v1/auth/invitacion").permitAll()
                         // Health check de Railway: solo responde UP/DOWN, sin detalles.
                         .requestMatchers(HttpMethod.GET, "/actuator/health").permitAll()
+                        // CU13: catálogo público de servicios, sin sesión.
+                        .requestMatchers(HttpMethod.GET, "/api/v1/publico/servicios", "/api/v1/publico/servicios/*").permitAll()
                         .requestMatchers(HttpMethod.OPTIONS, "/**").permitAll()
                         .anyRequest().authenticated())
                 .addFilterBefore(filtroJwt, UsernamePasswordAuthenticationFilter.class);

@@ -44,6 +44,21 @@ public interface ReservaRepository extends JpaRepository<Reserva, Integer>, JpaS
                            @Param("estados") Collection<String> estados, @Param("excluir") Integer excluir);
 
     /**
+     * CU10 paso C: citas que ocupan el horario de esos barberos ese día. {@code excluir}: la cita que se
+     * está reprogramando, para que no se tape a sí misma (0 si no aplica).
+     */
+    @Query("""
+            select r from Reserva r
+            where r.empleado.idEmpleado in :empleadoIds
+              and r.fecha = :fecha
+              and r.estado in :estados
+              and r.idReserva <> :excluir
+            order by r.horaInicio
+            """)
+    List<Reserva> ocupadas(@Param("empleadoIds") Collection<Integer> empleadoIds, @Param("fecha") LocalDate fecha,
+                           @Param("estados") Collection<String> estados, @Param("excluir") Integer excluir);
+
+    /**
      * Bloquea la fila del barbero hasta el fin de la transacción: dos recepcionistas que agendan al
      * mismo barbero a la vez se ordenan, y la segunda ve la cita de la primera al validar el traslape.
      */
