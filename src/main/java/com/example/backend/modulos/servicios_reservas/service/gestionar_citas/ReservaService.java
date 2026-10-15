@@ -178,17 +178,29 @@ public class ReservaService {
                 .orElseThrow(() -> new ValidacionNegocioException(MSG_CLIENTE_INVALIDO, Map.of("clienteId", MSG_CLIENTE_INVALIDO)));
         Servicio servicio = servicioRepository.findById(peticion.servicioId()).filter(Servicio::isActivo)
                 .orElseThrow(() -> new ValidacionNegocioException(MSG_SERVICIO_INVALIDO, Map.of("servicioId", MSG_SERVICIO_INVALIDO)));
-        Empleado barbero = barberoDisponible(peticion.empleadoId(), servicio, peticion.fecha(),
-                peticion.horaInicio(), peticion.horaFin(), 0);
+        return crearCita(cliente, servicio, peticion.empleadoId(), peticion.fecha(),
+                peticion.horaInicio(), peticion.horaFin(), canal, estado, actor);
+    }
+
+    /**
+     * Núcleo compartido por CU11 (recepción) y CU12 (cliente web): comprueba que el barbero pueda atender
+     * ese horario, guarda la cita con el anticipo del 20 % y deja la bitácora, todo en una transacción.
+     * Quien lo llama ya validó los datos de entrada, el cliente y el servicio.
+     */
+    @Transactional
+    public ReservaResponse crearCita(Cliente cliente, Servicio servicio, Integer empleadoId, LocalDate fecha,
+                                     LocalTime horaInicio, LocalTime horaFin, String canal, String estado,
+                                     UsuarioAutenticado actor) {
+        Empleado barbero = barberoDisponible(empleadoId, servicio, fecha, horaInicio, horaFin, 0);
 
         return guardando(() -> {
             Reserva reserva = new Reserva();
             reserva.setCliente(cliente);
             reserva.setServicio(servicio);
             reserva.setEmpleado(barbero);
-            reserva.setFecha(peticion.fecha());
-            reserva.setHoraInicio(peticion.horaInicio());
-            reserva.setHoraFin(peticion.horaFin());
+            reserva.setFecha(fecha);
+            reserva.setHoraInicio(horaInicio);
+            reserva.setHoraFin(horaFin);
             reserva.setCanal(canal);
             reserva.setEstado(estado);
             reserva.setMontoAnticipo(servicio.getPrecio().multiply(PORCENTAJE_ANTICIPO).setScale(2, RoundingMode.HALF_UP));
@@ -199,6 +211,13 @@ public class ReservaService {
                     null, snapshot(guardada));
             return mapper.aResponse(guardada);
         });
+    }
+
+    /** CU12 reutiliza la validación de CU11: horas coherentes y cita no en el pasado. Lanza 400 si falla. */
+    public static void validarHorarioCita(LocalDate fecha, LocalTime inicio, LocalTime fin) {
+        Errores invalidos = new Errores();
+        validarHorario(invalidos, fecha, inicio, fin);
+        invalidos.lanzarSiHay(null);
     }
 
     // ---------- Reprogramar (paso 2) ----------
