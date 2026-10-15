@@ -15,6 +15,7 @@ import tools.jackson.databind.JsonNode;
 import java.time.DayOfWeek;
 import java.time.LocalDate;
 import java.time.temporal.TemporalAdjusters;
+import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -67,6 +68,14 @@ class AgendaControllerIT extends IntegracionBaseTest {
         int id = leer(r).get("empleado").get("idEmpleado").asInt();
         mockMvc.perform(conToken(put("/api/v1/empleados/" + id + "/servicios"), admin)
                         .content(json(Map.of("servicios", List.of(servicio)))))
+                .andExpect(status().isOk());
+        // CU10: CU11 solo acepta citas dentro del horario semanal del barbero (CU09), no de su turno.
+        // Todos los días 09:00–15:00, igual que CitasBaseTest; las citas de esta prueba van de 10:00 a 12:30.
+        List<Map<String, Object>> dias = new ArrayList<>();
+        for (String dia : List.of("LUNES", "MARTES", "MIERCOLES", "JUEVES", "VIERNES", "SABADO", "DOMINGO")) {
+            dias.add(Map.of("diaSemana", dia, "trabaja", true, "horaEntrada", "09:00", "horaSalida", "15:00"));
+        }
+        mockMvc.perform(conToken(put("/api/v1/horarios/barberos/" + id), admin).content(json(Map.of("dias", dias))))
                 .andExpect(status().isOk());
         return id;
     }
