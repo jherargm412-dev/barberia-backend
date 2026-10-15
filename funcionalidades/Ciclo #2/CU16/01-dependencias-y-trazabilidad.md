@@ -13,7 +13,7 @@ CU16 no crea datos: muestra las citas que otros casos de uso registran. Esta sec
 | CU03 Roles y Permisos | Qué rol tiene qué permiso; permisos activos | `AGENDA_CONSULTAR`, `AGENDA_CONSULTAR_PROPIA` | Semilla `V2`, `UsuarioRepository.permisosEfectivos` (solo roles y permisos activos) | Obligatoria | Implementado (`main`) | Todos recibirían 403 |
 | CU06 Gestionar Clientes | Clientes con teléfono | Nombre y teléfono | Tabla `cliente` (`V1`, `V4`) vía `Reserva.cliente` | Indirecta (a través de CU11) | Implementado (`main`) | No habría a quién agendar |
 | CU08 Catálogo de Servicios | Servicios y precios | Nombre y precio | Tabla `servicio` (`V3`) vía `Reserva.servicio` | Indirecta (a través de CU11) | Implementado (`main`) | No habría servicios que agendar |
-| CU14 Registrar Pago de Anticipo | Pago del 20 % | "Si el anticipo ya fue cubierto" | Hoy solo existe `reserva.monto_anticipo`; no hay columnas ni tablas de pago del anticipo | Opcional para funcionar; necesaria para ese dato | Pendiente (sin código en ninguna rama) | Se muestra el monto y "Estado del pago no disponible" |
+| CU14 Registrar Pago de Anticipo | Pago del 20 % | "Si el anticipo ya fue cubierto" | `pago_anticipo` (V15) | Opcional para funcionar; necesaria para ese dato | Implementado | Se muestra "Anticipo cubierto" o "Anticipo pendiente" y se cobra desde el detalle |
 | CU12 Solicitar Cita | Citas web, posiblemente sin barbero | Citas `canal = WEB`, `empleado_id` nulo | Misma tabla `reserva` | Opcional (fuente futura) | Pendiente | Ninguno: CU16 ya muestra "Sin asignar" |
 | CU09 Horarios / CU10 Disponibilidad | Horarios y huecos libres | Nada: la especificación de CU16 solo lee `reserva`, `cliente`, `servicio` y `empleado` | `horario`, `horario_barbero` (V12, solo en `dev-prueba`) | No requerida | CU09 en `dev-prueba`; CU10 pendiente | Ninguno. La vista semanal consulta 7 días de `reserva` |
 | CU05 Bitácora | Auditoría | Nada | — | No aplica (solo lectura) | Implementado | Ninguno |
@@ -36,7 +36,7 @@ flowchart LR
   CU06["CU06 Clientes"] -->|cliente| CU11
   CU08["CU08 Servicios"] -->|servicio| CU11
   CU12["CU12 Solicitar Cita<br/>pendiente"] -.->|citas sin barbero| CU16
-  CU14["CU14 Pago de Anticipo<br/>pendiente"] -.->|anticipo cubierto| CU16
+  CU14["CU14 Pago de Anticipo"] -.->|anticipo cubierto| CU16
   CU10["CU10 Disponibilidad<br/>pendiente"] -.->|huecos libres: no requerido| CU16
 ```
 

@@ -163,13 +163,15 @@ class AgendaControllerIT extends IntegracionBaseTest {
                 .andExpect(jsonPath("$.length()").value(1))
                 .andExpect(jsonPath("$[0].idReserva").value(idReserva))
                 .andExpect(jsonPath("$[0].horaInicio").value("11:00"))
-                .andExpect(jsonPath("$[0].horaFin").value("11:30"));
+                .andExpect(jsonPath("$[0].horaFin").value("11:30"))
+                .andExpect(jsonPath("$[0].anticipoPagado").value(false));
 
         abrirCaja(recep);
         cobrarAnticipo(recep, idReserva); // CU14 confirma la cita al cobrar el anticipo
         mockMvc.perform(conToken(get(AGENDA).param("fecha", PASADO_MANANA.toString()).param("estado", "CONFIRMADA"), recep))
                 .andExpect(jsonPath("$.length()").value(1))
-                .andExpect(jsonPath("$[0].estado").value("CONFIRMADA"));
+                .andExpect(jsonPath("$[0].estado").value("CONFIRMADA"))
+                .andExpect(jsonPath("$[0].anticipoPagado").value(true));
         mockMvc.perform(conToken(get(AGENDA).param("fecha", PASADO_MANANA.toString()).param("estado", "PENDIENTE"), recep))
                 .andExpect(jsonPath("$.length()").value(0));
 
@@ -248,7 +250,8 @@ class AgendaControllerIT extends IntegracionBaseTest {
         String admin = tokenAdmin();
         String token = crearYLoguear(admin, cliente("cliente5.cu16@houseofcut.bo", PASS), "cliente5.cu16@houseofcut.bo");
 
-        mockMvc.perform(conToken(get(AGENDA), token)).andExpect(status().isForbidden());
+        mockMvc.perform(conToken(get(AGENDA), token)).andExpect(status().isForbidden())
+                .andExpect(jsonPath("$.message").value("No tiene permisos para acceder a la agenda"));
         mockMvc.perform(conToken(get(AGENDA + "/1"), token)).andExpect(status().isForbidden());
         mockMvc.perform(get(AGENDA)).andExpect(status().isUnauthorized());
     }

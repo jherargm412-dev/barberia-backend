@@ -17,7 +17,7 @@ public class AgendaMapper {
         Empleado barbero = reserva.getEmpleado();
         return new CitaAgendaResponse(
                 reserva.getIdReserva(), reserva.getFecha(), reserva.getHoraInicio(), reserva.getHoraFin(),
-                reserva.getEstado(), reserva.getCanal(), reserva.getMontoAnticipo(),
+                reserva.getEstado(), reserva.getCanal(), reserva.getMontoAnticipo(), reserva.isAnticipoPagado(),
                 new ClienteAgenda(reserva.getCliente().getIdCliente(), reserva.getCliente().getNombre(),
                         reserva.getCliente().getTelefono()),
                 new ServicioAgenda(reserva.getServicio().getIdServicio(), reserva.getServicio().getNombre(),
