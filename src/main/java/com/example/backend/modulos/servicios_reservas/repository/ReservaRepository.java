@@ -10,6 +10,7 @@ import org.springframework.data.jpa.repository.*;
 import org.springframework.data.repository.query.Param;
 
 import java.time.LocalDate;
+import java.time.LocalDateTime;
 import java.time.LocalTime;
 import java.util.Collection;
 import java.util.List;
@@ -90,4 +91,16 @@ public interface ReservaRepository extends JpaRepository<Reserva, Integer>, JpaS
             order by u.nombre
             """)
     List<Empleado> barberosActivos(@Param("rol") String rol);
+
+    /** CU12: citas web PENDIENTE, sin anticipo pagado, registradas antes de {@code limite} (ya vencieron). */
+    @Query("""
+            select r from Reserva r join fetch r.cliente c left join fetch c.usuario
+            where r.canal = 'WEB' and r.estado = 'PENDIENTE' and r.fechaRegistro < :limite
+              and not exists (select 1 from PagoAnticipo p where p.reserva = r)
+            """)
+    List<Reserva> webSinPagarAntesDe(@Param("limite") LocalDateTime limite);
+
+    /** CU12 "Mis citas": las citas del cliente, de la más próxima a la más lejana (las pasadas al final). */
+    @EntityGraph(attributePaths = {"cliente", "servicio", "empleado", "empleado.usuario"})
+    List<Reserva> findByCliente_IdClienteOrderByFechaDescHoraInicioDesc(Integer idCliente);
 }

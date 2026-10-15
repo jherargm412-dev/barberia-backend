@@ -207,6 +207,7 @@ public class ReservaService {
             reserva.setCanal(canal);
             reserva.setEstado(estado);
             reserva.setMontoAnticipo(servicio.getPrecio().multiply(PORCENTAJE_ANTICIPO).setScale(2, RoundingMode.HALF_UP));
+            reserva.setFechaRegistro(ahora());
             Reserva guardada = reservaRepository.saveAndFlush(reserva);
             bitacoraService.registrar(referenciaActor(actor), RESERVA_CREAR, TABLA_RESERVA,
                     "Cita #" + guardada.getIdReserva() + " de '" + cliente.getNombre() + "' el "

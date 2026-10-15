@@ -10,6 +10,7 @@ import lombok.Setter;
 
 import java.math.BigDecimal;
 import java.time.LocalDate;
+import java.time.LocalDateTime;
 import java.time.LocalTime;
 import java.util.List;
 
@@ -85,6 +86,18 @@ public class Reserva {
      */
     @Formula("(select count(*) > 0 from pago_anticipo p where p.reserva_id = id_reserva)")
     private boolean anticipoPagado;
+
+    /** Cuándo se registró la cita (hora de Bolivia). Sirve para vencer las citas web sin pagar (CU12). */
+    @Column(name = "fecha_registro", nullable = false, updatable = false)
+    private LocalDateTime fechaRegistro;
+
+    /** Por si alguna escritura no lo fijó: la hora de registro nunca queda vacía. */
+    @PrePersist
+    void alRegistrar() {
+        if (fechaRegistro == null) {
+            fechaRegistro = LocalDateTime.now(java.time.ZoneId.of("America/La_Paz"));
+        }
+    }
 
     /** ATENDIDA, CANCELADA y NO_ASISTIO son finales: la cita ya no se reprograma ni cambia de estado. */
     public boolean estaFinalizada() {

@@ -8,6 +8,8 @@ import com.example.backend.modulos.servicios_reservas.dto.gestionar_citas.Reserv
 import com.example.backend.modulos.servicios_reservas.dto.solicitar_cita.SolicitarCitaRequest;
 import com.example.backend.modulos.servicios_reservas.entity.Reserva;
 import com.example.backend.modulos.servicios_reservas.entity.Servicio;
+import com.example.backend.modulos.servicios_reservas.mapper.gestionar_citas.ReservaMapper;
+import com.example.backend.modulos.servicios_reservas.repository.ReservaRepository;
 import com.example.backend.modulos.servicios_reservas.repository.ServicioRepository;
 import com.example.backend.modulos.servicios_reservas.service.gestionar_citas.ReservaService;
 import com.example.backend.security.UsuarioAutenticado;
@@ -35,6 +37,8 @@ public class SolicitudCitaService {
     private final ReservaService reservaService;
     private final ClienteRepository clienteRepository;
     private final ServicioRepository servicioRepository;
+    private final ReservaRepository reservaRepository;
+    private final ReservaMapper reservaMapper;
 
     /** Barberos habilitados para el servicio que el cliente eligió. */
     @Transactional(readOnly = true)
@@ -72,6 +76,15 @@ public class SolicitudCitaService {
 
         return reservaService.crearCita(cliente, servicio, peticion.empleadoId(), peticion.fecha(),
                 peticion.horaInicio(), peticion.horaFin(), Reserva.CANAL_WEB, Reserva.PENDIENTE, actor);
+    }
+
+    /** "Mis citas" del cliente logueado (sin cliente asociado: lista vacía). */
+    @Transactional(readOnly = true)
+    public List<ReservaResponse> misCitas(UsuarioAutenticado actor) {
+        return clienteRepository.findByUsuario_IdUsuario(actor.idUsuario())
+                .map(c -> reservaRepository.findByCliente_IdClienteOrderByFechaDescHoraInicioDesc(c.getIdCliente())
+                        .stream().map(reservaMapper::aResponse).toList())
+                .orElse(List.of());
     }
 
     private static void siFalta(Map<String, String> errores, String campo, Object valor) {

@@ -7,21 +7,35 @@ import com.example.backend.modulos.servicios_reservas.dto.gestionar_citas.Barber
 import com.example.backend.modulos.servicios_reservas.dto.gestionar_citas.ReservaResponse;
 import com.example.backend.modulos.servicios_reservas.entity.Reserva;
 import com.example.backend.modulos.servicios_reservas.entity.Servicio;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
+
+import java.time.LocalDateTime;
 
 /** Conversión entidad → DTO. */
 @Component
 public class ReservaMapper {
+
+    /** Plazo para pagar el anticipo de una cita web (CU12); el mismo que usa VencimientoSolicitudesService. */
+    @Value("${app.citas.web.minutos-para-pagar:30}")
+    private long minutosParaPagar;
 
     public ReservaResponse aResponse(Reserva r) {
         Cliente c = r.getCliente();
         Servicio s = r.getServicio();
         Empleado e = r.getEmpleado();
         return new ReservaResponse(r.getIdReserva(), r.getFecha(), r.getHoraInicio(), r.getHoraFin(),
-                r.getCanal(), r.getEstado(), r.getMontoAnticipo(), r.isAnticipoPagado(),
+                r.getCanal(), r.getEstado(), r.getMontoAnticipo(), r.isAnticipoPagado(), pagarAntesDe(r),
                 new ReservaResponse.ClienteCita(c.getIdCliente(), c.getNombre(), c.getTelefono()),
                 new ReservaResponse.ServicioCita(s.getIdServicio(), s.getNombre(), s.getPrecio()),
                 e == null ? null : new ReservaResponse.BarberoCita(e.getIdEmpleado(), e.getUsuario().getNombre()));
+    }
+
+    /** Solo una cita web pendiente y sin pagar tiene hora límite para pagar. */
+    private LocalDateTime pagarAntesDe(Reserva r) {
+        boolean porPagar = Reserva.CANAL_WEB.equals(r.getCanal()) && Reserva.PENDIENTE.equals(r.getEstado())
+                && !r.isAnticipoPagado() && r.getFechaRegistro() != null;
+        return porPagar ? r.getFechaRegistro().plusMinutes(minutosParaPagar) : null;
     }
 
     public BarberoDisponible aBarbero(Empleado e) {
