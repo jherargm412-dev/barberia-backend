@@ -1,15 +1,9 @@
 package com.example.backend.modulos.servicios_reservas;
 
-import com.example.backend.modulos.seguridad_usuarios.IntegracionBaseTest;
 import com.example.backend.modulos.seguridad_usuarios.entity.Bitacora;
-import com.example.backend.modulos.servicios_reservas.repository.ServicioRepository;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.http.MediaType;
-import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.test.web.servlet.MvcResult;
-import org.springframework.test.web.servlet.request.MockHttpServletRequestBuilder;
 
 import java.time.LocalDate;
 import java.util.HashMap;
@@ -22,51 +16,13 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 /** Criterios de aceptación de CU11 (funcionalidades/Ciclo #2/CU11/00-README.md §5). */
-class ReservaControllerIT extends IntegracionBaseTest {
+class ReservaControllerIT extends CitasBaseTest {
 
     private static final String URL = "/api/v1/reservas";
     private static final LocalDate MANANA = LocalDate.now(Bitacora.ZONA_HORARIA).plusDays(1);
     private static final LocalDate AYER = LocalDate.now(Bitacora.ZONA_HORARIA).minusDays(1);
-
-    @Autowired
-    ServicioRepository servicioRepository;
-
-    @Autowired
-    JdbcTemplate jdbcTemplate;
-
-    private MockHttpServletRequestBuilder conToken(MockHttpServletRequestBuilder req, String token) {
-        return req.header("Authorization", bearer(token)).contentType(MediaType.APPLICATION_JSON);
-    }
-
-    private int idServicio(String nombre) {
-        return servicioRepository.findAll().stream().filter(s -> s.getNombre().equals(nombre)).findFirst()
-                .orElseThrow().getIdServicio();
-    }
-
-    /** Barbero del turno Mañana (09:00–15:00) habilitado para los servicios indicados (CU17). */
-    private int nuevoBarbero(String admin, String correo, Integer... servicios) throws Exception {
-        Map<String, Object> cuerpo = new HashMap<>();
-        cuerpo.put("nombre", "Barbero " + correo);
-        cuerpo.put("correo", correo);
-        cuerpo.put("contrasena", "Clave123!");
-        cuerpo.put("telefono", "71234567");
-        cuerpo.put("tipoContrato", "COMISIONISTA");
-        cuerpo.put("turnoId", 1);
-        MvcResult r = mockMvc.perform(conToken(post("/api/v1/empleados"), admin).content(json(cuerpo)))
-                .andExpect(status().isCreated()).andReturn();
-        int id = leer(r).get("empleado").get("idEmpleado").asInt();
-        mockMvc.perform(conToken(put("/api/v1/empleados/" + id + "/servicios"), admin)
-                        .content(json(Map.of("servicios", List.of(servicios)))))
-                .andExpect(status().isOk());
-        return id;
-    }
-
-    private int nuevoCliente(String admin, String nombre) throws Exception {
-        MvcResult r = mockMvc.perform(conToken(post("/api/v1/clientes"), admin)
-                        .content(json(Map.of("nombre", nombre, "telefono", "71112233"))))
-                .andExpect(status().isCreated()).andReturn();
-        return leer(r).get("cliente").get("idCliente").asInt();
-    }
+    /** Un día de lunes a sábado: la barbería atiende hasta las 21:00 y el barbero de prueba hasta las 15:00. */
+    private static final LocalDate DIA_SEMANA = proximoDiaDeSemana(LocalDate.now(Bitacora.ZONA_HORARIA));
 
     private static Map<String, Object> cita(Object clienteId, Object servicioId, Object empleadoId, Object fecha,
                                             String inicio, String fin, String canal) {
@@ -187,7 +143,7 @@ class ReservaControllerIT extends IntegracionBaseTest {
     }
 
     @Test
-    @DisplayName("3. Cliente inexistente, servicio inhabilitado, barbero sin el servicio o sin rol Barbero, fuera de turno: 400")
+    @DisplayName("3. Cliente inexistente, servicio inhabilitado, barbero sin el servicio o sin rol Barbero, fuera de su horario: 400")
     void validacionesDeNegocio() throws Exception {
         String admin = tokenAdmin();
         int corte = idServicio("Corte Clásico");
@@ -215,9 +171,9 @@ class ReservaControllerIT extends IntegracionBaseTest {
                 .andExpect(jsonPath("$.campos.empleadoId").exists());
 
         mockMvc.perform(conToken(post(URL), admin)
-                        .content(json(cita(cliente, corte, barbero, MANANA, "14:45", "15:15", "PRESENCIAL"))))
+                        .content(json(cita(cliente, corte, barbero, DIA_SEMANA, "14:45", "15:15", "PRESENCIAL"))))
                 .andExpect(status().isBadRequest())
-                .andExpect(jsonPath("$.message").value("El horario está fuera del turno del barbero (09:00–15:00)"));
+                .andExpect(jsonPath("$.message").value("La cita está fuera del horario del barbero (09:00–15:00)"));
 
         mockMvc.perform(conToken(patch("/api/v1/servicios/" + corte + "/estado"), admin)
                         .content(json(Map.of("estado", "INHABILITADO"))))

@@ -21,6 +21,7 @@ import com.example.backend.modulos.servicios_reservas.mapper.gestionar_citas.Res
 import com.example.backend.modulos.servicios_reservas.repository.ReservaRepository;
 import com.example.backend.modulos.servicios_reservas.repository.ReservaSpecifications;
 import com.example.backend.modulos.servicios_reservas.repository.ServicioRepository;
+import com.example.backend.modulos.servicios_reservas.service.consultar_disponibilidad.ConsultaDisponibilidadService;
 import com.example.backend.security.UsuarioAutenticado;
 import jakarta.persistence.PersistenceException;
 import lombok.RequiredArgsConstructor;
@@ -47,9 +48,9 @@ import java.util.function.Supplier;
  * cambiar su estado (confirmar, atendida, no asistió, cancelar). Nunca se borra una cita: el anticipo
  * cobrado y la asistencia quedan como traza para caja (CU14, CU21) y la agenda (CU16).
  *
- * <p>Disponibilidad: mientras no existan CU09 (horarios) ni CU10 (motor de disponibilidad), se valida
- * lo mínimo que exige el CU10 para un barbero concreto: que preste el servicio (empleado_servicio), que
- * la cita quede dentro de su turno y que no se cruce con otra cita activa suya ese día.
+ * <p>Disponibilidad (CU10): el barbero presta el servicio (empleado_servicio), la cita cae dentro del
+ * horario de atención y de la jornada del barbero ese día (CU09: horario semanal, excepciones) y no se
+ * cruza con otra cita activa suya.
  */
 @Slf4j
 @Service
@@ -64,7 +65,7 @@ public class ReservaService {
     /** CU11 paso 3: minutos de espera antes de poder marcar "No asistió". */
     public static final int TOLERANCIA_MINUTOS = 15;
     /** CU10 paso C: citas que ocupan el horario del barbero. */
-    public static final List<String> OCUPAN_HORARIO = List.of(Reserva.PENDIENTE, Reserva.CONFIRMADA, Reserva.ATENDIDA);
+    public static final List<String> OCUPAN_HORARIO = ConsultaDisponibilidadService.OCUPAN_HORARIO;
     private static final List<String> ESTADOS_INICIALES = List.of(Reserva.PENDIENTE, Reserva.CONFIRMADA);
     /** La recepción no usa WEB (CU12). */
     private static final List<String> CANALES_RECEPCION =
@@ -106,6 +107,7 @@ public class ReservaService {
     private final EmpleadoServicioRepository empleadoServicioRepository;
     private final UsuarioRepository usuarioRepository;
     private final BitacoraService bitacoraService;
+    private final ConsultaDisponibilidadService consultaDisponibilidadService;
     private final ReservaMapper mapper;
 
     // ---------- Consultas (no se registran en bitácora) ----------
@@ -312,7 +314,7 @@ public class ReservaService {
 
     /**
      * El barbero existe, está activo, tiene rol Barbero, presta el servicio, la cita cae dentro de su
-     * turno y no se cruza con otra cita suya. Bloquea su fila para que dos citas simultáneas no choquen.
+     * horario (CU10) y no se cruza con otra cita suya. Bloquea su fila para que dos citas simultáneas no choquen.
      */
     private Empleado barberoDisponible(Integer empleadoId, Servicio servicio, LocalDate fecha,
                                        LocalTime inicio, LocalTime fin, Integer excluir) {
@@ -326,12 +328,8 @@ public class ReservaService {
         if (!prestaServicio) {
             throw new ValidacionNegocioException(MSG_BARBERO_SIN_SERVICIO, Map.of("empleadoId", MSG_BARBERO_SIN_SERVICIO));
         }
-        Turno turno = barbero.getTurno();
-        if (turno != null && (inicio.isBefore(turno.getHoraEntrada()) || fin.isAfter(turno.getHoraSalida()))) {
-            String mensaje = "El horario está fuera del turno del barbero (" + turno.getHoraEntrada().format(HORA)
-                    + "–" + turno.getHoraSalida().format(HORA) + ")";
-            throw new ValidacionNegocioException(mensaje, Map.of("horaInicio", mensaje));
-        }
+        // CU10: dentro del horario de atención y de la jornada del barbero ese día (CU09).
+        consultaDisponibilidadService.validarHorarioCita(barbero.getIdEmpleado(), fecha, inicio, fin);
         if (reservaRepository.existeTraslape(barbero.getIdEmpleado(), fecha, inicio, fin, OCUPAN_HORARIO, excluir)) {
             throw new ConflictoException(MSG_HORARIO_OCUPADO, Map.of("horaInicio", MSG_HORARIO_OCUPADO));
         }

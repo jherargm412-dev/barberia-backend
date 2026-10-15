@@ -42,7 +42,7 @@ Horas en formato `HH:mm`. Errores en el formato estándar `ErrorApi` con `campos
 - **Cliente:** debe existir. No se usa `cliente.activo` (columna de CU06 que no está en `Script.sql`). **Servicio:** existir y estar habilitado.
 - **Entidad `Reserva`:** igual a `Script.sql` §22 (11 columnas, mismos tipos, nulos y valores por defecto). V11 solo agrega índices.
 - **Barbero:** activo, con rol Barbero y habilitado para el servicio en `empleado_servicio` (CU17).
-- **Disponibilidad** (mínimo de CU10 hasta que exista): dentro del turno del barbero y sin cruzarse con otra cita suya `PENDIENTE`, `CONFIRMADA` o `ATENDIDA` ese día → 409 `El barbero ya tiene una cita en ese horario`. Una cita que empieza justo cuando otra termina no choca. La fila del barbero se bloquea (`SELECT … FOR UPDATE`) para que dos recepcionistas no agenden el mismo hueco a la vez.
+- **Disponibilidad** (CU10, ver `../CU10/00-README.md`): dentro del horario de atención y de la jornada del barbero ese día según CU09 (horario semanal y excepciones; el turno de CU17 ya no se usa) → si no, 400. Sin cruzarse con otra cita suya `PENDIENTE`, `CONFIRMADA` o `ATENDIDA` ese día → 409 `El barbero ya tiene una cita en ese horario`. Una cita que empieza justo cuando otra termina no choca. La fila del barbero se bloquea (`SELECT … FOR UPDATE`) para que dos recepcionistas no agenden el mismo hueco a la vez.
 - **Estados finales:** `ATENDIDA`, `CANCELADA`, `NO_ASISTIO` no se reprograman ni cambian → 409. Pedir el estado que ya tiene es idempotente (200, sin bitácora).
 - **Servicio inhabilitado después de agendar:** la cita existente se conserva y se puede reprogramar.
 
@@ -54,7 +54,7 @@ Horas en formato `HH:mm`. Errores en el formato estándar `ErrorApi` con `campos
 
 1. La recepcionista agenda: 201, PENDIENTE, anticipo 20 %, bitácora y aparece en la agenda del día.
 2. CONFIRMADA inicial permitida; ATENDIDA inicial, canal WEB o desconocido, horas invertidas, fecha pasada y campos vacíos → 400.
-3. Cliente inexistente, servicio inhabilitado, barbero sin el servicio, empleado sin rol Barbero, fuera de turno → 400.
+3. Cliente inexistente, servicio inhabilitado, barbero sin el servicio, empleado sin rol Barbero, fuera del horario del barbero → 400.
 4. Traslape → 409; cita contigua, otro barbero o cita cancelada no bloquean.
 5. Reprogramar conserva estado y anticipo, registra bitácora; sin cambios no la registra; traslape → 409; cita final → 409.
 6. Confirmar es idempotente; atender / no asistió antes de tiempo → 400; desde un estado final → 409; cita inexistente → 404.
@@ -63,6 +63,5 @@ Horas en formato `HH:mm`. Errores en el formato estándar `ErrorApi` con `campos
 
 ## 6. Pendiente para otros CU
 
-- **CU09/CU10:** cuando existan `horario`/`servicio_horario` y el motor de disponibilidad, `ReservaService.barberoDisponible` debe validar también el horario de atención del local.
 - **CU14:** agregará en su migración el método de pago, la caja y la fecha de pago del anticipo; hoy "pagó el anticipo" solo deja la cita CONFIRMADA.
 - **CU21:** el paso a ATENDIDA es el disparador del cobro final en caja.
