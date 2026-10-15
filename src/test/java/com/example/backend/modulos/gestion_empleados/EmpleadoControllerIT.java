@@ -1,7 +1,7 @@
 package com.example.backend.modulos.gestion_empleados;
 
 import com.example.backend.modulos.gestion_empleados.entity.EmpleadoServicio;
-import com.example.backend.modulos.gestion_empleados.entity.EstadoEspecialidad;
+import com.example.backend.modulos.gestion_empleados.entity.EstadoEmpleadoServicio;
 import com.example.backend.modulos.gestion_empleados.repository.EmpleadoServicioRepository;
 import com.example.backend.modulos.seguridad_usuarios.IntegracionBaseTest;
 import com.example.backend.modulos.seguridad_usuarios.entity.Bitacora;
@@ -216,7 +216,7 @@ class EmpleadoControllerIT extends IntegracionBaseTest {
         List<EmpleadoServicio> filas = empleadoServicioRepository.findByEmpleado_IdEmpleado(id);
         assertThat(filas).hasSize(2);
         assertThat(filas).filteredOn(f -> f.getServicio().getIdServicio() == barba)
-                .extracting(EmpleadoServicio::getEstado).containsExactly(EstadoEspecialidad.INHABILITADO);
+                .extracting(EmpleadoServicio::getEstado).containsExactly(EstadoEmpleadoServicio.INHABILITADO);
         Bitacora b = bitacoraRepository.findByAccionOrderByIdBitacoraDesc("EMPLEADO_SERVICIOS_ACTUALIZAR").getFirst();
         assertThat(b.getTablaAfectada()).isEqualTo("empleado_servicio");
         assertThat(b.getDetalle()).endsWith(": -Perfilado de Barba");

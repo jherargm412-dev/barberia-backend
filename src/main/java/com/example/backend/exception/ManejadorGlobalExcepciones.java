@@ -80,6 +80,13 @@ public class ManejadorGlobalExcepciones {
         return responder(HttpStatus.CONFLICT, ex.getMessage(), req, ex.getCampos());
     }
 
+    /** CU09 7c y 4f: el 409 lleva la lista de citas que impiden el cambio. */
+    @ExceptionHandler(CitasAfectadasException.class)
+    public ResponseEntity<ErrorApi> citasAfectadas(CitasAfectadasException ex, HttpServletRequest req) {
+        return ResponseEntity.status(HttpStatus.CONFLICT).body(
+                ErrorApi.conCitasAfectadas(HttpStatus.CONFLICT, ex.getMessage(), req.getRequestURI(), ex.getCitas()));
+    }
+
     /** Red de seguridad para la restricción UNIQUE de correo en condiciones de carrera. */
     @ExceptionHandler(DataIntegrityViolationException.class)
     public ResponseEntity<ErrorApi> integridad(DataIntegrityViolationException ex, HttpServletRequest req) {

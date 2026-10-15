@@ -3,66 +3,74 @@ package com.example.backend.modulos.gestion_empleados.entity;
 import com.example.backend.modulos.seguridad_usuarios.entity.Empleado;
 import com.example.backend.modulos.servicios_reservas.entity.Servicio;
 import jakarta.persistence.*;
-import lombok.AccessLevel;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
-import org.springframework.data.domain.Persistable;
 
-/**
- * Especialidad técnica de un barbero (CU16): servicio que está habilitado a realizar.
- * Quitarla la pasa a INHABILITADO en vez de borrar la fila, para conservar el historial.
- * Implementa {@link Persistable} porque la PK es compuesta y se asigna a mano: así {@code save()}
- * inserta directamente las filas nuevas en lugar de hacer un merge.
- */
+import java.io.Serializable;
+import java.util.Objects;
+
+/** Servicio que un barbero está capacitado para realizar (CU17 paso 4). */
 @Entity
 @Table(name = "empleado_servicio")
 @Getter
 @Setter
 @NoArgsConstructor
-public class EmpleadoServicio implements Persistable<EmpleadoServicioId> {
+public class EmpleadoServicio {
 
     @EmbeddedId
-    private EmpleadoServicioId id;
+    private Id id = new Id();
 
     @MapsId("empleadoId")
-    @ManyToOne(fetch = FetchType.LAZY)
+    @ManyToOne(fetch = FetchType.LAZY, optional = false)
     @JoinColumn(name = "empleado_id")
     private Empleado empleado;
 
     @MapsId("servicioId")
-    @ManyToOne(fetch = FetchType.LAZY)
+    @ManyToOne(fetch = FetchType.LAZY, optional = false)
     @JoinColumn(name = "servicio_id")
     private Servicio servicio;
 
     @Enumerated(EnumType.STRING)
     @Column(name = "estado", nullable = false, length = 20)
-    private EstadoEspecialidad estado = EstadoEspecialidad.HABILITADO;
-
-    @Transient
-    @Getter(AccessLevel.NONE)
-    @Setter(AccessLevel.NONE)
-    private boolean nueva;
+    private EstadoEmpleadoServicio estado = EstadoEmpleadoServicio.HABILITADO;
 
     public EmpleadoServicio(Empleado empleado, Servicio servicio) {
-        this.id = new EmpleadoServicioId(empleado.getIdEmpleado(), servicio.getIdServicio());
         this.empleado = empleado;
         this.servicio = servicio;
-        this.nueva = true;
+        this.id = new Id(empleado.getIdEmpleado(), servicio.getIdServicio());
     }
 
-    public boolean estaHabilitada() {
-        return estado == EstadoEspecialidad.HABILITADO;
+    public boolean estaHabilitado() {
+        return estado == EstadoEmpleadoServicio.HABILITADO;
     }
 
-    @Override
-    public boolean isNew() {
-        return nueva;
-    }
+    @Embeddable
+    @Getter
+    @Setter
+    @NoArgsConstructor
+    public static class Id implements Serializable {
 
-    @PostPersist
-    @PostLoad
-    void marcarExistente() {
-        nueva = false;
+        @Column(name = "empleado_id")
+        private Integer empleadoId;
+
+        @Column(name = "servicio_id")
+        private Integer servicioId;
+
+        public Id(Integer empleadoId, Integer servicioId) {
+            this.empleadoId = empleadoId;
+            this.servicioId = servicioId;
+        }
+
+        @Override
+        public boolean equals(Object o) {
+            return o instanceof Id otro && Objects.equals(empleadoId, otro.empleadoId)
+                    && Objects.equals(servicioId, otro.servicioId);
+        }
+
+        @Override
+        public int hashCode() {
+            return Objects.hash(empleadoId, servicioId);
+        }
     }
 }

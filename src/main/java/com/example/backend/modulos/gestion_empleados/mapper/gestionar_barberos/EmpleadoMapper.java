@@ -30,7 +30,7 @@ public class EmpleadoMapper {
     public EmpleadoResponse aResponse(Empleado e, List<EmpleadoServicio> relaciones) {
         Usuario u = e.getUsuario();
         List<ServicioAsignado> servicios = relaciones.stream()
-                .filter(EmpleadoServicio::estaHabilitada)
+                .filter(EmpleadoServicio::estaHabilitado)
                 .map(EmpleadoServicio::getServicio)
                 .sorted(Comparator.comparing(Servicio::getNombre))
                 .map(s -> new ServicioAsignado(s.getIdServicio(), s.getNombre(), s.getPrecio(), s.isActivo()))
