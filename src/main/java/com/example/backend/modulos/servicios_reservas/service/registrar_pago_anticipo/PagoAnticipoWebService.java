@@ -50,7 +50,7 @@ public class PagoAnticipoWebService {
     @Transactional(readOnly = true)
     public QrAnticipoResponse generarQr(Integer idReserva, UsuarioAutenticado actor) {
         reservaPropia(idReserva, actor); // primero la propiedad: así una cita ajena no revela nada
-        Reserva reserva = pagoAnticipoService.reservaPorCobrar(idReserva);
+        Reserva reserva = pagoAnticipoService.reservaPorCobrar(idReserva, false); // solo lectura: sin bloqueo
         pagoAnticipoService.exigirCajaAbierta(PagoAnticipoService.MSG_SIN_CAJA_WEB);
 
         try {
@@ -71,7 +71,7 @@ public class PagoAnticipoWebService {
         String referencia = p == null || p.referencia() == null ? "" : p.referencia().trim();
 
         reservaPropia(idReserva, actor);
-        Reserva reserva = pagoAnticipoService.reservaPorCobrar(idReserva);
+        Reserva reserva = pagoAnticipoService.reservaPorCobrar(idReserva, true);
         BigDecimal monto = reserva.getMontoAnticipo();
 
         if (!pagoVerificado(referencia, idReserva, monto)) {

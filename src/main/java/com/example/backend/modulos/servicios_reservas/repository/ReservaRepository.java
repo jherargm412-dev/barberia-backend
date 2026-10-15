@@ -92,6 +92,14 @@ public interface ReservaRepository extends JpaRepository<Reserva, Integer>, JpaS
             """)
     List<Empleado> barberosActivos(@Param("rol") String rol);
 
+    /**
+     * CU14: bloquea la fila de la reserva mientras se cobra su anticipo. Así dos cobros simultáneos de la misma
+     * cita no chocan contra el UNIQUE de pago_anticipo (500): el segundo espera y ve "ya tiene el anticipo".
+     */
+    @Lock(LockModeType.PESSIMISTIC_WRITE)
+    @Query("select r from Reserva r where r.idReserva = :id")
+    Optional<Reserva> bloquear(@Param("id") Integer idReserva);
+
     /** CU12: citas web PENDIENTE, sin anticipo pagado, registradas antes de {@code limite} (ya vencieron). */
     @Query("""
             select r from Reserva r join fetch r.cliente c left join fetch c.usuario

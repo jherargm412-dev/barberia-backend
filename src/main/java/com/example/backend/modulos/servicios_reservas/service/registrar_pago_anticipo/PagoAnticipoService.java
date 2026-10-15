@@ -30,7 +30,7 @@ import com.example.backend.modulos.ventas_caja.repository.MovimientoCajaReposito
 import com.example.backend.security.UsuarioAutenticado;
 
 import jakarta.persistence.PersistenceException;
-import jakarta.transaction.Transactional;
+import org.springframework.transaction.annotation.Transactional;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 
@@ -79,7 +79,7 @@ public class PagoAnticipoService {
         RegistrarAnticipoRequest peticion = p == null ? new RegistrarAnticipoRequest(null, null, null, null) : p;
 
         validarEntrada(peticion);
-        Reserva reserva = reservaPorCobrar(idReserva);
+        Reserva reserva = reservaPorCobrar(idReserva, true);
         validarTotal(peticion, reserva.getMontoAnticipo());
         Caja caja = cajaAbierta(MSG_SIN_CAJA);
 
@@ -173,9 +173,12 @@ public class PagoAnticipoService {
         return valor.stripTrailingZeros().scale() <= 2;
     }
 
-    /** La reserva a cobrar: debe existir, no tener ya un anticipo y estar PENDIENTE. */
-    Reserva reservaPorCobrar(Integer idReserva) {
-        Reserva reserva = reservaRepository.findById(idReserva)
+    /**
+     * La reserva a cobrar: debe existir, no tener ya un anticipo y estar PENDIENTE. Con {@code bloquear} (al cobrar)
+     * se bloquea su fila hasta el fin de la transacción, para que un doble cobro simultáneo dé "ya pagado" y no 500.
+     */
+    Reserva reservaPorCobrar(Integer idReserva, boolean bloquear) {
+        Reserva reserva = (bloquear ? reservaRepository.bloquear(idReserva) : reservaRepository.findById(idReserva))
                 .orElseThrow(() -> new RecursoNoEncontradoException("Cita no encontrada: " + idReserva));
         if (pagoAnticipoRepository.findByReserva_IdReserva(idReserva).isPresent()) {
             throw new ValidacionNegocioException(MSG_YA_PAGADO);
