@@ -216,7 +216,7 @@ public class ReservaService {
         });
     }
 
-    /** CU12 reutiliza la validación de CU11: horas coherentes y cita no en el pasado. Lanza 400 si falla. */
+    /** CU12 reutiliza la validación de CU11: horas coherentes, duración válida y cita no en el pasado. Lanza 400 si falla. */
     public static void validarHorarioCita(LocalDate fecha, LocalTime inicio, LocalTime fin) {
         Errores invalidos = new Errores();
         validarHorario(invalidos, fecha, inicio, fin);
@@ -330,10 +330,16 @@ public class ReservaService {
 
     // ---------- Validaciones ----------
 
-    /** Horas coherentes y cita en el futuro (hora de Bolivia). */
+    /** Horas coherentes, duración razonable (la misma regla que CU10) y cita en el futuro (hora de Bolivia). */
     private static void validarHorario(Errores errores, LocalDate fecha, LocalTime inicio, LocalTime fin) {
         if (!fin.isAfter(inicio)) {
             errores.agregar("horaFin", MSG_HORAS);
+        } else {
+            long minutos = java.time.Duration.between(inicio, fin).toMinutes();
+            if (minutos < ConsultaDisponibilidadService.DURACION_MINIMA
+                    || minutos > ConsultaDisponibilidadService.DURACION_MAXIMA || minutos % 5 != 0) {
+                errores.agregar("horaFin", ConsultaDisponibilidadService.MSG_DURACION);
+            }
         }
         if (fecha.atTime(inicio).isBefore(ahora())) {
             errores.agregar("fecha", MSG_PASADO);

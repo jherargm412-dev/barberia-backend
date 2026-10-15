@@ -94,7 +94,7 @@ class ReservaControllerIT extends CitasBaseTest {
     }
 
     @Test
-    @DisplayName("2. Una cita nueva solo nace PENDIENTE (CONFIRMADA o ATENDIDA: 400); canal WEB: 400; campos vacíos: 400 por campo")
+    @DisplayName("2. Una cita nueva solo nace PENDIENTE (CONFIRMADA o ATENDIDA: 400); canal WEB, duración fuera de 15–240 min: 400; campos vacíos: 400 por campo")
     void validacionesDeEntrada() throws Exception {
         String admin = tokenAdmin();
         int corte = idServicio("Corte Clásico");
@@ -132,6 +132,15 @@ class ReservaControllerIT extends CitasBaseTest {
                         .content(json(cita(cliente, corte, barbero, MANANA, "11:00", "11:00", "PRESENCIAL"))))
                 .andExpect(status().isBadRequest())
                 .andExpect(jsonPath("$.campos.horaFin").value("La hora de fin debe ser posterior a la hora de inicio"));
+
+        // Duración: la misma regla que CU10 (15 a 240 minutos, en múltiplos de 5).
+        for (String[] horas : new String[][]{{"09:00", "15:00"}, {"11:00", "11:10"}, {"11:00", "11:33"}}) {
+            mockMvc.perform(conToken(post(URL), admin)
+                            .content(json(cita(cliente, corte, barbero, MANANA, horas[0], horas[1], "PRESENCIAL"))))
+                    .andExpect(status().isBadRequest())
+                    .andExpect(jsonPath("$.campos.horaFin")
+                            .value("La duración debe estar entre 15 y 240 minutos, en múltiplos de 5"));
+        }
 
         mockMvc.perform(conToken(post(URL), admin)
                         .content(json(cita(cliente, corte, barbero, AYER, "11:00", "11:30", "PRESENCIAL"))))

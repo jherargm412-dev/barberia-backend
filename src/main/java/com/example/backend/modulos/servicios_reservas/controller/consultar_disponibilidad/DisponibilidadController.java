@@ -29,7 +29,8 @@ public class DisponibilidadController {
      * reprogramar, la propia cita no ocupa su horario.
      */
     @GetMapping
-    @PreAuthorize("hasAnyAuthority('RESERVA_CREAR', 'RESERVA_EDITAR', 'AGENDA_CONSULTAR')")
+    // RESERVA_SOLICITAR: el cliente también ve las horas libres al solicitar su cita (CU12).
+    @PreAuthorize("hasAnyAuthority('RESERVA_CREAR', 'RESERVA_EDITAR', 'AGENDA_CONSULTAR', 'RESERVA_SOLICITAR')")
     public DisponibilidadResponse consultar(
             @RequestParam(required = false) Integer servicioId,
             @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate fecha,
