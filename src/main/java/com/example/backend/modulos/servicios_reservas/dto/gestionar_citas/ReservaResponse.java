@@ -1,0 +1,32 @@
+package com.example.backend.modulos.servicios_reservas.dto.gestionar_citas;
+
+import com.fasterxml.jackson.annotation.JsonFormat;
+
+import java.math.BigDecimal;
+import java.time.LocalDate;
+import java.time.LocalDateTime;
+import java.time.LocalTime;
+
+/**
+ * Una cita con los datos que la recepción necesita ver: cliente (con teléfono para WhatsApp), servicio y barbero.
+ * {@code anticipoPagado}: si ya se cobró el anticipo (CU14). {@code pagarAntesDe}: solo en una cita web
+ * pendiente sin pagar, la hora límite (Bolivia) para pagar el anticipo antes de que se cancele sola (CU12).
+ */
+public record ReservaResponse(Integer idReserva, LocalDate fecha,
+                              @JsonFormat(pattern = "HH:mm") LocalTime horaInicio,
+                              @JsonFormat(pattern = "HH:mm") LocalTime horaFin,
+                              String canal, String estado, BigDecimal montoAnticipo,
+                              boolean anticipoPagado,
+                              @JsonFormat(pattern = "yyyy-MM-dd'T'HH:mm") LocalDateTime pagarAntesDe,
+                              ClienteCita cliente, ServicioCita servicio, BarberoCita barbero) {
+
+    public record ClienteCita(Integer idCliente, String nombre, String telefono) {
+    }
+
+    public record ServicioCita(Integer idServicio, String nombre, BigDecimal precio) {
+    }
+
+    /** Null si la cita no tiene barbero asignado (posible en CU12). */
+    public record BarberoCita(Integer idEmpleado, String nombre) {
+    }
+}

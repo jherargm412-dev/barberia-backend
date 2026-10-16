@@ -73,6 +73,8 @@ public class EmpleadoService {
     public static final String TABLA_USUARIO = "usuario";
 
     private static final int MIN_DIGITOS_TELEFONO = 7;
+    /** Largo de la columna empleado.especialidad. */
+    private static final int MAX_ESPECIALIDAD = 80;
 
     private final EmpleadoRepository empleadoRepository;
     private final EmpleadoServicioRepository empleadoServicioRepository;
@@ -123,6 +125,22 @@ public class EmpleadoService {
         return turnoRepository.findAll(Sort.by("idTurno")).stream().map(mapper::aTurno).toList();
     }
 
+    /**
+     * Regla base para agendar citas: barbero con cuenta ACTIVA y el servicio HABILITADO en
+     * empleado_servicio. CU09 la amplía con fecha y hora en DisponibilidadService.
+     */
+    @Transactional(readOnly = true)
+    public boolean estaDisponibleParaCitas(Integer empleadoId, Integer servicioId) {
+        if (empleadoId == null || servicioId == null) {
+            return false;
+        }
+        return empleadoRepository.findById(empleadoId)
+                .filter(e -> e.getUsuario().estaActivo() && e.getUsuario().tieneRol(Rol.BARBERO))
+                .flatMap(e -> empleadoServicioRepository.findById(new EmpleadoServicio.Id(empleadoId, servicioId)))
+                .map(EmpleadoServicio::estaHabilitado)
+                .orElse(false);
+    }
+
     // ---------- Registrar (paso 2: usuario → rol_usuario → empleado) ----------
 
     /** Con {@code enviarInvitacion} no se pide contraseña: se envía un enlace para que el empleado la elija. */
@@ -159,20 +177,24 @@ public class EmpleadoService {
         // 3. empleado (usuario_id 1:1 UNIQUE)
         Empleado empleado = new Empleado();
         empleado.setUsuario(usuario);
-        empleado.setEspecialidad(limpiar(peticion.especialidad()));
         empleado.setTipoContrato(peticion.tipoContrato());
         empleado.setTurno(turno);
         empleado = empleadoRepository.save(empleado);
 
         bitacoraService.registrar(referenciaActor(actor), EMPLEADO_CREAR, TABLA_EMPLEADO,
                 "Registro del empleado " + correo + " con rol " + rol.getNombre(), null, snapshot(empleado));
+        // 4. Especialidades del barbero = servicios del catálogo que realiza (empleado_servicio).
+        //    Va antes de la invitación: si un servicio no es válido, se revierte todo y no sale el correo.
+        if (Rol.BARBERO.equals(rol.getNombre())) {
+            sincronizarServicios(empleado.getIdEmpleado(), peticion.servicios(), actor);
+        }
         String mensaje = RespuestaEmpleado.MENSAJE_REGISTRADO;
         if (invitar) {
             mensaje = invitacionService.invitar(usuario, referenciaActor(actor))
                     ? RespuestaEmpleado.MENSAJE_INVITACION_ENVIADA
                     : RespuestaEmpleado.MENSAJE_INVITACION_FALLIDA;
         }
-        return new RespuestaEmpleado(mensaje, mapper.aResponse(empleado, List.of()));
+        return new RespuestaEmpleado(mensaje, respuesta(empleado));
     }
 
     // ---------- Editar (paso 3) ----------
@@ -193,24 +215,30 @@ public class EmpleadoService {
         usuario.setCorreo(correo);
         usuario.setTelefono(telefono);
         usuario.setFechaNacimiento(peticion.fechaNacimiento());
-        empleado.setEspecialidad(limpiar(peticion.especialidad()));
+        // La especialidad ya no se escribe a mano: en un barbero se arma con sus servicios
+        // (sincronizarServicios); los demás empleados no tienen especialidad.
+        boolean esBarbero = usuario.tieneRol(Rol.BARBERO);
+        if (!esBarbero) {
+            empleado.setEspecialidad(null);
+        }
         empleado.setTipoContrato(peticion.tipoContrato());
         empleado.setTurno(turno);
         Map<String, Object> despues = snapshot(empleado);
-        if (antes.equals(despues)) {
-            return respuesta(empleado); // sin cambios: sin bitácora
+        if (!antes.equals(despues)) { // sin cambios en los datos: sin bitácora
+            usuarioRepository.save(usuario);
+            empleadoRepository.save(empleado);
+            // Igual que CU01: si también es cliente, su ficha mantiene el mismo nombre y teléfono.
+            clienteRepository.findByUsuario_IdUsuario(usuario.getIdUsuario()).ifPresent(c -> {
+                c.setNombre(usuario.getNombre());
+                c.setTelefono(usuario.getTelefono());
+                clienteRepository.save(c);
+            });
+            bitacoraService.registrar(referenciaActor(actor), EMPLEADO_ACTUALIZAR, TABLA_EMPLEADO,
+                    "Actualización del empleado " + correo, antes, despues);
         }
-
-        usuarioRepository.save(usuario);
-        empleadoRepository.save(empleado);
-        // Igual que CU01: si también es cliente, su ficha mantiene el mismo nombre y teléfono.
-        clienteRepository.findByUsuario_IdUsuario(usuario.getIdUsuario()).ifPresent(c -> {
-            c.setNombre(usuario.getNombre());
-            c.setTelefono(usuario.getTelefono());
-            clienteRepository.save(c);
-        });
-        bitacoraService.registrar(referenciaActor(actor), EMPLEADO_ACTUALIZAR, TABLA_EMPLEADO,
-                "Actualización del empleado " + correo, antes, despues);
+        if (esBarbero) {
+            sincronizarServicios(id, peticion.servicios(), actor);
+        }
         return respuesta(empleado);
     }
 
@@ -282,6 +310,8 @@ public class EmpleadoService {
         } catch (DataIntegrityViolationException ex) {
             throw new ConflictoException(MSG_SERVICIOS_CONCURRENTES);
         }
+        empleado.setEspecialidad(especialidadDe(relaciones));
+        empleadoRepository.save(empleado);
         List<String> cambios = new ArrayList<>();
         agregados.stream().sorted().forEach(n -> cambios.add("+" + n));
         quitados.stream().sorted().forEach(n -> cambios.add("-" + n));
@@ -290,6 +320,26 @@ public class EmpleadoService {
                 Map.of("idEmpleado", id, "servicios", antes),
                 Map.of("idEmpleado", id, "servicios", nombresHabilitados(relaciones)));
         return mapper.aResponse(empleado, relaciones);
+    }
+
+    /**
+     * Especialidades del barbero (registro y edición de CU17 y CU01): deja HABILITADOS exactamente los
+     * servicios indicados. {@code null} = no cambiar. Si ya son los mismos no hace nada (ni bitácora),
+     * así editar a un barbero desvinculado sin tocar sus servicios no falla.
+     */
+    @Transactional
+    public void sincronizarServicios(Integer idEmpleado, List<Integer> idsServicios, UsuarioAutenticado actor) {
+        if (idsServicios == null) {
+            return;
+        }
+        Set<Integer> pedidos = idsServicios.stream().filter(Objects::nonNull).collect(Collectors.toSet());
+        Set<Integer> actuales = empleadoServicioRepository.findByEmpleado_IdEmpleado(idEmpleado).stream()
+                .filter(EmpleadoServicio::estaHabilitado)
+                .map(r -> r.getServicio().getIdServicio())
+                .collect(Collectors.toSet());
+        if (!pedidos.equals(actuales)) {
+            asignarServicios(idEmpleado, idsServicios, actor);
+        }
     }
 
     // ---------- Desvincular (paso 5) y reactivar ----------
@@ -377,6 +427,15 @@ public class EmpleadoService {
 
     private static ConflictoException correoRepetido() {
         return new ConflictoException(MSG_CORREO_REPETIDO, Map.of("correo", "ya registrado"));
+    }
+
+    /** Especialidad que se muestra (listado, perfil): nombres de los servicios habilitados, hasta 80 caracteres. */
+    private static String especialidadDe(List<EmpleadoServicio> relaciones) {
+        String texto = String.join(", ", nombresHabilitados(relaciones));
+        if (texto.isEmpty()) {
+            return null;
+        }
+        return texto.length() <= MAX_ESPECIALIDAD ? texto : texto.substring(0, MAX_ESPECIALIDAD - 1) + "…";
     }
 
     private static Set<String> nombresHabilitados(List<EmpleadoServicio> relaciones) {

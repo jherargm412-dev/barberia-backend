@@ -4,6 +4,7 @@ import com.example.backend.modulos.seguridad_usuarios.entity.TipoContrato;
 import jakarta.validation.constraints.*;
 
 import java.time.LocalDate;
+import java.util.List;
 
 /**
  * CU17 paso 2 (flujo integrado): datos de la cuenta + datos laborales en una sola petición.
@@ -32,8 +33,12 @@ public record RegistrarEmpleadoRequest(
 
         String rol,
 
-        @Size(max = 80, message = "La especialidad admite máximo 80 caracteres")
-        String especialidad,
+        /**
+         * Especialidades = servicios del catálogo (CU08) que realiza. Solo se usan si el rol es Barbero;
+         * quedan HABILITADOS en empleado_servicio y la especialidad se arma con sus nombres.
+         * null = no cambiar (al editar).
+         */
+        List<Integer> servicios,
 
         @NotNull(message = "El tipo de contrato es obligatorio")
         TipoContrato tipoContrato,

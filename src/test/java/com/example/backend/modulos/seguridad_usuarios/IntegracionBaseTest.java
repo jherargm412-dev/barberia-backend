@@ -17,6 +17,7 @@ import tools.jackson.databind.ObjectMapper;
 
 import java.util.Map;
 
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
@@ -48,6 +49,28 @@ public abstract class IntegracionBaseTest {
 
     protected String json(Object cuerpo) {
         return objectMapper.writeValueAsString(cuerpo);
+    }
+
+    /** CU21: abre una caja (a la que entran los anticipos de CU14) con el token indicado; devuelve su id. */
+    protected int abrirCaja(String token) throws Exception {
+        MvcResult r = mockMvc.perform(post("/api/v1/caja/aperturas").header("Authorization", bearer(token))
+                        .contentType(MediaType.APPLICATION_JSON).content(json(Map.of("montoInicial", 100))))
+                .andExpect(status().isCreated()).andReturn();
+        return leer(r).get("idCaja").asInt();
+    }
+
+    /** CU14 en mostrador: cobra en efectivo el anticipo exacto de la cita, que así queda CONFIRMADA. */
+    protected void cobrarAnticipo(String token, int idReserva) throws Exception {
+        MvcResult cita = mockMvc.perform(get("/api/v1/reservas/" + idReserva).header("Authorization", bearer(token)))
+                .andExpect(status().isOk()).andReturn();
+        JsonNode reserva = leer(cita);
+        if (reserva.has("reserva")) {
+            reserva = reserva.get("reserva");
+        }
+        mockMvc.perform(post("/api/v1/reservas/" + idReserva + "/anticipo").header("Authorization", bearer(token))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(json(Map.of("metodo", "EFECTIVO", "montoEfectivo", reserva.get("montoAnticipo").decimalValue()))))
+                .andExpect(status().isCreated());
     }
 
     protected JsonNode leer(MvcResult resultado) throws Exception {
@@ -99,7 +122,8 @@ public abstract class IntegracionBaseTest {
                 "contrasena", contrasena,
                 "telefono", "71234567",
                 "roles", java.util.List.of("Barbero"),
-                "empleado", Map.of("tipoContrato", "COMISIONISTA", "especialidad", "Degradados", "turnoId", 1));
+                // servicios: 2 = "Corte Degradado (Fade)" en la semilla de V3 (su especialidad).
+                "empleado", Map.of("tipoContrato", "COMISIONISTA", "turnoId", 1, "servicios", java.util.List.of(2)));
     }
 
     protected Map<String, Object> recepcionista(String correo, String contrasena) {

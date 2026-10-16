@@ -1,5 +1,6 @@
 package com.example.backend.modulos.seguridad_usuarios.service.gestionar_usuarios;
 
+import com.example.backend.modulos.gestion_empleados.service.gestionar_barberos.EmpleadoService;
 import com.example.backend.modulos.seguridad_usuarios.audit.AccionesBitacora;
 import com.example.backend.modulos.seguridad_usuarios.audit.BitacoraService;
 import com.example.backend.modulos.seguridad_usuarios.entity.*;
@@ -44,6 +45,8 @@ public class UsuarioService {
     private final PasswordPolicy passwordPolicy;
     private final BitacoraService bitacoraService;
     private final InvitacionService invitacionService;
+    /** CU17: especialidades del barbero = servicios habilitados (empleado_servicio). */
+    private final EmpleadoService empleadoService;
     private final UsuarioMapper mapper;
 
     // ---------- Consultas (no se registran en bitácora) ----------
@@ -53,6 +56,7 @@ public class UsuarioService {
         int tamanoEfectivo = tamano <= 0 ? TAMANO_PAGINA_DEFECTO : Math.min(tamano, TAMANO_PAGINA_MAXIMO);
         Pageable paginable = PageRequest.of(Math.max(pagina, 0), tamanoEfectivo, Sort.by("nombre").ascending());
         Specification<Usuario> filtro = Specification.allOf(
+                UsuarioSpecifications.sinUsuariosTecnicos(),
                 UsuarioSpecifications.conEstado(estado),
                 UsuarioSpecifications.conRol(rol),
                 UsuarioSpecifications.coincideCon(q));
@@ -97,9 +101,7 @@ public class UsuarioService {
         usuario.getRoles().addAll(roles);
         usuario = usuarioRepository.save(usuario);
 
-        if (esEmpleado) {
-            crearEmpleado(usuario, peticion.empleado());
-        }
+        Empleado empleado = esEmpleado ? crearEmpleado(usuario, peticion.empleado()) : null;
         if (esCliente) {
             crearCliente(usuario);
         }
@@ -107,6 +109,10 @@ public class UsuarioService {
         bitacoraService.registrar(referenciaActor(actor), AccionesBitacora.USUARIO_CREAR, AccionesBitacora.TABLA_USUARIO,
                 "Registro de usuario " + correo + " con rol " + nombresDe(roles),
                 null, snapshot(usuario));
+        // Especialidades del barbero (CU17). Antes de la invitación: si un servicio no es válido se revierte todo.
+        if (empleado != null && esBarbero(roles)) {
+            empleadoService.sincronizarServicios(empleado.getIdEmpleado(), peticion.empleado().servicios(), actor);
+        }
         String mensaje = RespuestaRegistro.MENSAJE_REGISTRO;
         if (invitar) {
             mensaje = invitacionService.invitar(usuario, referenciaActor(actor))
@@ -156,12 +162,20 @@ public class UsuarioService {
 
         // Empleado / cliente: se crean si faltan, nunca se borran (histórico). Datos de cliente se propagan.
         if (esEmpleado) {
-            if (empleadoExistente.isPresent()) {
+            Empleado empleado = empleadoExistente.orElse(null);
+            if (empleado == null) {
+                empleado = crearEmpleado(usuario, peticion.empleado());
+            } else if (peticion.empleado() != null) {
+                actualizarEmpleado(empleado, peticion.empleado());
+            }
+            // Solo el barbero tiene especialidades (sus servicios); los demás empleados no.
+            if (esBarbero(nuevosRoles)) {
                 if (peticion.empleado() != null) {
-                    actualizarEmpleado(empleadoExistente.get(), peticion.empleado());
+                    empleadoService.sincronizarServicios(empleado.getIdEmpleado(), peticion.empleado().servicios(), actor);
                 }
-            } else {
-                crearEmpleado(usuario, peticion.empleado());
+            } else if (empleado.getEspecialidad() != null) {
+                empleado.setEspecialidad(null);
+                empleadoRepository.save(empleado);
             }
         }
         Optional<Cliente> clienteExistente = clienteRepository.findByUsuario_IdUsuario(id);
@@ -310,17 +324,17 @@ public class UsuarioService {
         }
     }
 
-    private void crearEmpleado(Usuario usuario, EmpleadoRequest datos) {
+    private Empleado crearEmpleado(Usuario usuario, EmpleadoRequest datos) {
         Empleado e = new Empleado();
         e.setUsuario(usuario);
-        actualizarEmpleado(e, datos);
+        return actualizarEmpleado(e, datos);
     }
 
-    private void actualizarEmpleado(Empleado e, EmpleadoRequest datos) {
+    /** La especialidad no se escribe aquí: en un barbero se arma con sus servicios (EmpleadoService). */
+    private Empleado actualizarEmpleado(Empleado e, EmpleadoRequest datos) {
         if (datos.tipoContrato() != null) {
             e.setTipoContrato(datos.tipoContrato());
         }
-        e.setEspecialidad(limpiar(datos.especialidad()));
         if (datos.turnoId() == null) {
             e.setTurno(null);
         } else {
@@ -328,7 +342,11 @@ public class UsuarioService {
                     .orElseThrow(() -> new ValidacionNegocioException("El turno indicado no existe",
                             Map.of("empleado.turnoId", "inexistente"))));
         }
-        empleadoRepository.save(e);
+        return empleadoRepository.save(e);
+    }
+
+    private static boolean esBarbero(Set<Rol> roles) {
+        return roles.stream().anyMatch(r -> Rol.BARBERO.equals(r.getNombre()));
     }
 
     private void crearCliente(Usuario usuario) {

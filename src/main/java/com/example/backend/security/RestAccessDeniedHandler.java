@@ -12,6 +12,8 @@ import org.springframework.stereotype.Component;
 import tools.jackson.databind.ObjectMapper;
 
 import java.io.IOException;
+import java.util.LinkedHashMap;
+import java.util.Map;
 
 /** 403 en formato {@link ErrorApi} cuando el usuario autenticado no tiene el permiso requerido. */
 @Component
@@ -21,14 +23,36 @@ public class RestAccessDeniedHandler implements AccessDeniedHandler {
     public static final String MENSAJE = "No tiene permiso para esta operación";
     /** CU05 2a: la bitácora exige su propio texto de acceso denegado. */
     public static final String MENSAJE_BITACORA = "No tiene permiso para consultar la bitácora";
-    private static final String RUTA_BITACORA = "/api/v1/bitacora";
+    /** CU09 2a. */
+    public static final String MENSAJE_HORARIOS = "No tiene permiso para gestionar horarios";
+    /** CU16 2a. */
+    public static final String MENSAJE_AGENDA = "No tiene permisos para acceder a la agenda";
+    /** CU21: texto de acceso denegado para operaciones de caja. */
+    public static final String MENSAJE_CAJA = "No tiene permiso para realizar esta operación";
+
+    /** Rutas con texto propio de acceso denegado (prefijo → mensaje); el resto usa {@link #MENSAJE}. */
+    private static final Map<String, String> MENSAJES_POR_RUTA = new LinkedHashMap<>();
+
+    static {
+        MENSAJES_POR_RUTA.put("/api/v1/bitacora", MENSAJE_BITACORA);
+        MENSAJES_POR_RUTA.put("/api/v1/horarios", MENSAJE_HORARIOS);
+        MENSAJES_POR_RUTA.put("/api/v1/caja", MENSAJE_CAJA);
+        MENSAJES_POR_RUTA.put("/api/v1/agenda", MENSAJE_AGENDA);
+    }
 
     private final ObjectMapper objectMapper;
 
-    /** Mensaje de 403 según la ruta: el de la bitácora o el genérico. */
+    /** Mensaje de 403 según la ruta: el propio del caso de uso o el genérico. */
     public static String mensajePara(String ruta) {
-        return ruta != null && (ruta.equals(RUTA_BITACORA) || ruta.startsWith(RUTA_BITACORA + "/"))
-                ? MENSAJE_BITACORA : MENSAJE;
+        if (ruta != null) {
+            for (Map.Entry<String, String> entrada : MENSAJES_POR_RUTA.entrySet()) {
+                String prefijo = entrada.getKey();
+                if (ruta.equals(prefijo) || ruta.startsWith(prefijo + "/")) {
+                    return entrada.getValue();
+                }
+            }
+        }
+        return MENSAJE;
     }
 
     @Override

@@ -1,5 +1,7 @@
 package com.example.backend.modulos.seguridad_usuarios.mapper.gestionar_usuarios;
 
+import com.example.backend.modulos.gestion_empleados.entity.EmpleadoServicio;
+import com.example.backend.modulos.gestion_empleados.repository.EmpleadoServicioRepository;
 import com.example.backend.modulos.seguridad_usuarios.entity.Cliente;
 import com.example.backend.modulos.seguridad_usuarios.entity.Empleado;
 import com.example.backend.modulos.seguridad_usuarios.entity.Rol;
@@ -20,6 +22,7 @@ import java.util.List;
 public class UsuarioMapper {
 
     private final EmpleadoRepository empleadoRepository;
+    private final EmpleadoServicioRepository empleadoServicioRepository;
     private final ClienteRepository clienteRepository;
     private final InvitacionService invitacionService;
 
@@ -53,7 +56,12 @@ public class UsuarioMapper {
     private EmpleadoDetalle aEmpleadoDetalle(Empleado e) {
         TurnoResumen turno = e.getTurno() == null ? null
                 : new TurnoResumen(e.getTurno().getIdTurno(), e.getTurno().getNombre());
-        return new EmpleadoDetalle(e.getIdEmpleado(), e.getTipoContrato(), e.getEspecialidad(), turno);
+        List<ServicioDelEmpleado> servicios = empleadoServicioRepository.findByEmpleado_IdEmpleado(e.getIdEmpleado()).stream()
+                .filter(EmpleadoServicio::estaHabilitado)
+                .map(r -> new ServicioDelEmpleado(r.getServicio().getIdServicio(), r.getServicio().getNombre()))
+                .sorted(Comparator.comparing(ServicioDelEmpleado::nombre))
+                .toList();
+        return new EmpleadoDetalle(e.getIdEmpleado(), e.getTipoContrato(), e.getEspecialidad(), turno, servicios);
     }
 
     private ClienteDetalle aClienteDetalle(Cliente c) {

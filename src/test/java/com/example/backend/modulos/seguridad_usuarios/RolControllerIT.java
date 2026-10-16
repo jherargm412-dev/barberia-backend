@@ -76,13 +76,15 @@ class RolControllerIT extends IntegracionBaseTest {
     }
 
     @Test
-    @DisplayName("2. Catálogo de permisos: 30 en el orden de la semilla")
+    @DisplayName("2. Catálogo de permisos: 32 en el orden de la semilla (30 + CU12 y CU14)")
     void catalogoPermisos() throws Exception {
         mockMvc.perform(conToken(get("/api/v1/permisos"), tokenAdmin()))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.length()").value(30))
+                .andExpect(jsonPath("$.length()").value(32))
                 .andExpect(jsonPath("$[0].accion").value("USUARIO_GESTIONAR"))
-                .andExpect(jsonPath("$[29].accion").value("BITACORA_CONSULTAR"));
+                .andExpect(jsonPath("$[29].accion").value("BITACORA_CONSULTAR"))
+                .andExpect(jsonPath("$[30].accion").value("RESERVA_SOLICITAR"))
+                .andExpect(jsonPath("$[31].accion").value("ANTICIPO_PAGAR_PROPIO"));
     }
 
     @Test
