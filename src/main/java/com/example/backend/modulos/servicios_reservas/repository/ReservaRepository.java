@@ -81,6 +81,21 @@ public interface ReservaRepository extends JpaRepository<Reserva, Integer>, JpaS
             """)
     List<Empleado> barberosHabilitados(@Param("servicioId") Integer servicioId, @Param("rol") String rol);
 
+    /**
+     * CU13 paso 3: servicios que se pueden reservar, es decir, que presta (habilitado) al menos un barbero activo
+     * con horario semanal asignado (CU09). Reemplaza a servicio_horario del documento original.
+     */
+    @Query("""
+            select distinct es.servicio.idServicio from EmpleadoServicio es
+              join es.empleado e
+              join e.usuario u
+            where es.estado = com.example.backend.modulos.gestion_empleados.entity.EstadoEmpleadoServicio.HABILITADO
+              and u.estado = com.example.backend.modulos.seguridad_usuarios.entity.EstadoUsuario.ACTIVO
+              and exists (select 1 from Usuario u2 join u2.roles r where u2 = u and r.nombre = :rol)
+              and exists (select 1 from HorarioBarbero h where h.empleado = e)
+            """)
+    List<Integer> serviciosReservables(@Param("rol") String rol);
+
     /** Todos los barberos activos (filtro de la agenda), con su turno, ordenados por nombre. */
     @Query("""
             select e from Empleado e

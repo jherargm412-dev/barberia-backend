@@ -1,31 +1,28 @@
 package com.example.backend.modulos.servicios_reservas;
 
-import com.example.backend.modulos.seguridad_usuarios.IntegracionBaseTest;
 import com.example.backend.modulos.servicios_reservas.entity.Servicio;
-import com.example.backend.modulos.servicios_reservas.repository.ServicioRepository;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.MediaType;
-import org.springframework.jdbc.core.JdbcTemplate;
 
+import org.springframework.test.web.servlet.MvcResult;
+import tools.jackson.databind.JsonNode;
+
+import java.util.ArrayList;
+import java.util.EnumSet;
+import java.util.List;
 import java.util.Map;
 
+import static org.assertj.core.api.Assertions.assertThat;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.patch;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 /** Criterios de aceptación de CU13 Consultar Servicios (catálogo público, solo lectura). */
-class ConsultarServiciosControllerIT extends IntegracionBaseTest {
+class ConsultarServiciosControllerIT extends CitasBaseTest {
 
     private static final String URL = "/api/v1/publico/servicios";
-
-    @Autowired
-    ServicioRepository servicioRepository;
-
-    @Autowired
-    JdbcTemplate jdbcTemplate;
 
     private Servicio porNombre(String nombre) {
         return servicioRepository.findAll().stream()
@@ -44,6 +41,67 @@ class ConsultarServiciosControllerIT extends IntegracionBaseTest {
                 .andExpect(jsonPath("$[9].precio").value(min))
                 .andExpect(jsonPath("$[0].nombre").exists())
                 .andExpect(jsonPath("$[0].porcentajeComision").doesNotExist());
+
+        // Todo el catálogo, no solo los extremos, va de mayor a menor precio.
+        List<Double> precios = precios(mockMvc.perform(get(URL)).andReturn());
+        for (int i = 1; i < precios.size(); i++) {
+            assertThat(precios.get(i)).isLessThanOrEqualTo(precios.get(i - 1));
+        }
+    }
+
+    private List<Double> precios(MvcResult r) throws Exception {
+        List<Double> precios = new ArrayList<>();
+        for (JsonNode s : leer(r)) {
+            precios.add(s.get("precio").asDouble());
+        }
+        return precios;
+    }
+
+    @Test
+    @DisplayName("Paso 2: búsqueda por texto (sin tildes ni mayúsculas) y por rango de precio; rango inválido: 400")
+    void filtros() throws Exception {
+        mockMvc.perform(get(URL).param("q", "CORTE"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.length()").value(5));
+        mockMvc.perform(get(URL).param("q", "clasico"))
+                .andExpect(jsonPath("$.length()").value(1))
+                .andExpect(jsonPath("$[0].nombre").value("Corte Clásico"));
+        mockMvc.perform(get(URL).param("precioMin", "30").param("precioMax", "40"))
+                .andExpect(jsonPath("$.length()").value(4))
+                .andExpect(jsonPath("$[0].precio").value(40.0));
+        mockMvc.perform(get(URL).param("q", "corte").param("precioMin", "30").param("precioMax", "40"))
+                .andExpect(jsonPath("$.length()").value(2));
+        mockMvc.perform(get(URL).param("q", "no existe"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.length()").value(0));
+
+        mockMvc.perform(get(URL).param("precioMin", "50").param("precioMax", "20"))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.message").value("El precio mínimo no puede ser mayor que el máximo"));
+        mockMvc.perform(get(URL).param("precioMin", "-1"))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.message").value("El precio no puede ser negativo"));
+    }
+
+    @Test
+    @DisplayName("Paso 3: reservable solo si un barbero activo con horario (CU09) presta el servicio (CU17)")
+    void reservable() throws Exception {
+        int corte = idServicio("Corte Clásico");
+        mockMvc.perform(get(URL + "/" + corte))
+                .andExpect(jsonPath("$.reservable").value(false));
+
+        nuevoBarbero(tokenAdmin(), "barbero.cu13@houseofcut.bo", corte); // habilitado y con horario
+        mockMvc.perform(get(URL).param("q", "Corte Clásico"))
+                .andExpect(jsonPath("$[0].reservable").value(true));
+        mockMvc.perform(get(URL).param("q", "Infantil"))
+                .andExpect(jsonPath("$[0].reservable").value(false));
+
+        // Sin horario semanal (CU09) ya no se puede reservar.
+        jdbcTemplate.update("DELETE FROM horario_barbero WHERE empleado_id IN "
+                + "(SELECT e.id_empleado FROM empleado e JOIN usuario u ON u.id_usuario = e.usuario_id WHERE u.correo = ?)",
+                "barbero.cu13@houseofcut.bo");
+        mockMvc.perform(get(URL + "/" + corte))
+                .andExpect(jsonPath("$.reservable").value(false));
     }
 
     @Test
