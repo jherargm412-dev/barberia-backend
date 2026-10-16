@@ -22,6 +22,8 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
 import java.math.RoundingMode;
+import java.time.LocalDate;
+import java.time.LocalTime;
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Map;
@@ -42,6 +44,30 @@ public class CajaService {
     @Transactional(readOnly = true)
     public CajaResponse actual() {
         return cajas.findFirstByEstado("ABIERTA").map(this::respuesta).orElse(null);
+    }
+
+    /** Máximo de días que abarca una consulta del historial (para que la lista no crezca sin límite). */
+    public static final int HISTORIAL_MAX_DIAS = 366;
+    public static final String MSG_RANGO_HISTORIAL = "La fecha desde no puede ser posterior a la fecha hasta";
+    public static final String MSG_RANGO_LARGO = "El rango del historial no puede superar " + HISTORIAL_MAX_DIAS + " días";
+
+    /**
+     * Historial de cajas cerradas con su arqueo (CU21): por fecha de apertura entre {@code desde} y {@code hasta}
+     * (por defecto, los últimos 30 días), de la más reciente a la más antigua.
+     */
+    @Transactional(readOnly = true)
+    public List<CajaResponse> historial(LocalDate desde, LocalDate hasta) {
+        LocalDate fin = hasta != null ? hasta : ahora().toLocalDate();
+        LocalDate inicio = desde != null ? desde : fin.minusDays(30);
+        if (inicio.isAfter(fin)) {
+            throw new ValidacionNegocioException(MSG_RANGO_HISTORIAL, Map.of("desde", MSG_RANGO_HISTORIAL));
+        }
+        if (inicio.plusDays(HISTORIAL_MAX_DIAS).isBefore(fin)) {
+            throw new ValidacionNegocioException(MSG_RANGO_LARGO, Map.of("desde", MSG_RANGO_LARGO));
+        }
+        return cajas.findByEstadoAndFechaAperturaBetweenOrderByFechaAperturaDesc("CERRADA",
+                        inicio.atStartOfDay(), fin.atTime(LocalTime.MAX))
+                .stream().map(this::respuesta).toList();
     }
 
     @Transactional(readOnly = true)
