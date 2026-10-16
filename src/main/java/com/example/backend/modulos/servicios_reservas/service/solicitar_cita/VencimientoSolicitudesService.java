@@ -1,6 +1,7 @@
 package com.example.backend.modulos.servicios_reservas.service.solicitar_cita;
 
 import com.example.backend.modulos.seguridad_usuarios.audit.BitacoraService;
+import com.example.backend.modulos.seguridad_usuarios.entity.Usuario;
 import com.example.backend.modulos.servicios_reservas.entity.Reserva;
 import com.example.backend.modulos.servicios_reservas.repository.ReservaRepository;
 import com.example.backend.modulos.servicios_reservas.service.gestionar_citas.ReservaService;
@@ -31,6 +32,7 @@ public class VencimientoSolicitudesService {
     private final ReservaRepository reservaRepository;
     private final BitacoraService bitacoraService;
     private final Clock reloj;
+    private final ActorReservasWeb actorReservasWeb;
 
     @Value("${app.citas.web.minutos-para-pagar:30}")
     private long minutosParaPagar;
@@ -44,13 +46,12 @@ public class VencimientoSolicitudesService {
         for (Reserva r : vencidas) {
             r.setEstado(Reserva.CANCELADA);
             reservaRepository.save(r);
-            // La bitácora exige un usuario: la cita web la registró el propio cliente desde su cuenta.
-            if (r.getCliente().getUsuario() != null) {
-                bitacoraService.registrar(r.getCliente().getUsuario(), RESERVA_VENCER, ReservaService.TABLA_RESERVA,
-                        "Cita #" + r.getIdReserva() + " cancelada: no se pagó el anticipo en " + minutosParaPagar + " minutos",
-                        Map.of("idReserva", r.getIdReserva(), "estado", Reserva.PENDIENTE),
-                        Map.of("idReserva", r.getIdReserva(), "estado", Reserva.CANCELADA));
-            }
+            // La bitácora exige un usuario: el cliente si reservó con su cuenta; si fue un invitado, "Reservas en línea".
+            Usuario responsable = r.getCliente().getUsuario() != null ? r.getCliente().getUsuario() : actorReservasWeb.usuario();
+            bitacoraService.registrar(responsable, RESERVA_VENCER, ReservaService.TABLA_RESERVA,
+                    "Cita #" + r.getIdReserva() + " cancelada: no se pagó el anticipo en " + minutosParaPagar + " minutos",
+                    Map.of("idReserva", r.getIdReserva(), "estado", Reserva.PENDIENTE),
+                    Map.of("idReserva", r.getIdReserva(), "estado", Reserva.CANCELADA));
         }
         if (!vencidas.isEmpty()) {
             log.info("Citas web canceladas por falta de pago del anticipo: {}", vencidas.size());

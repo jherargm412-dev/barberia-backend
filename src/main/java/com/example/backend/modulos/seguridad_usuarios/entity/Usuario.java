@@ -18,6 +18,10 @@ import java.util.Set;
 @NoArgsConstructor
 public class Usuario {
 
+    /** Usuario técnico "Reservas en línea" (V17): firma lo que hace un invitado sin cuenta. No es una persona. */
+    public static final String CORREO_RESERVAS_WEB = "reservas.web@sistema.houseofcut";
+
+
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     @Column(name = "id_usuario")

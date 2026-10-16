@@ -26,6 +26,10 @@ public interface ReservaRepository extends JpaRepository<Reserva, Integer>, JpaS
     @EntityGraph(attributePaths = {"cliente", "servicio", "empleado", "empleado.usuario"})
     Optional<Reserva> findWithDetalleByIdReserva(Integer idReserva);
 
+    /** CU12 invitado: la cita por el código secreto de su enlace. */
+    @EntityGraph(attributePaths = {"cliente", "servicio", "empleado", "empleado.usuario"})
+    Optional<Reserva> findByCodigoAcceso(String codigoAcceso);
+
     /**
      * ¿El barbero ya tiene otra cita que se cruza con [inicio, fin) ese día? Dos citas se cruzan si una
      * empieza antes de que termine la otra; las que terminan justo cuando empieza la nueva no chocan.

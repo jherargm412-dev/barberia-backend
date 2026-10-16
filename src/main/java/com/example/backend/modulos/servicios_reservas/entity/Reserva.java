@@ -91,6 +91,10 @@ public class Reserva {
     @Column(name = "fecha_registro", nullable = false, updatable = false)
     private LocalDateTime fechaRegistro;
 
+    /** Solo en citas web de invitados (sin cuenta): código secreto de su enlace para ver la cita y pagar. */
+    @Column(name = "codigo_acceso", length = 36, unique = true)
+    private String codigoAcceso;
+
     /** Por si alguna escritura no lo fijó: la hora de registro nunca queda vacía. */
     @PrePersist
     void alRegistrar() {

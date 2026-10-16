@@ -16,6 +16,8 @@ import com.example.backend.modulos.servicios_reservas.dto.registrar_pago_anticip
 import com.example.backend.modulos.servicios_reservas.entity.PagoAnticipo;
 import com.example.backend.modulos.servicios_reservas.entity.Reserva;
 import com.example.backend.modulos.servicios_reservas.repository.ReservaRepository;
+import com.example.backend.modulos.servicios_reservas.service.solicitar_cita.ActorReservasWeb;
+import com.example.backend.modulos.servicios_reservas.service.solicitar_cita.ReservaInvitadoService;
 import com.example.backend.modulos.ventas_caja.entity.Caja;
 import com.example.backend.security.UsuarioAutenticado;
 
@@ -41,6 +43,8 @@ public class PagoAnticipoWebService {
     private final PagoAnticipoService pagoAnticipoService;
     private final PasarelaQr pasarelaQr;
     private final ReservaRepository reservaRepository;
+    private final ReservaInvitadoService reservaInvitadoService;
+    private final ActorReservasWeb actorReservasWeb;
     private final ClienteRepository clienteRepository;
 
     /**
@@ -50,6 +54,16 @@ public class PagoAnticipoWebService {
     @Transactional(readOnly = true)
     public QrAnticipoResponse generarQr(Integer idReserva, UsuarioAutenticado actor) {
         reservaPropia(idReserva, actor); // primero la propiedad: así una cita ajena no revela nada
+        return generar(idReserva);
+    }
+
+    /** Lo mismo para un invitado sin cuenta (CU12): la cita se identifica con el código secreto de su enlace. */
+    @Transactional(readOnly = true)
+    public QrAnticipoResponse generarQrInvitado(String codigo) {
+        return generar(reservaInvitadoService.porCodigo(codigo).getIdReserva());
+    }
+
+    private QrAnticipoResponse generar(Integer idReserva) {
         Reserva reserva = pagoAnticipoService.reservaPorCobrar(idReserva, false); // solo lectura: sin bloqueo
         pagoAnticipoService.exigirCajaAbierta(PagoAnticipoService.MSG_SIN_CAJA_WEB);
 
@@ -68,9 +82,18 @@ public class PagoAnticipoWebService {
      */
     @Transactional
     public PagoAnticipoResponse confirmarQr(Integer idReserva, ConfirmarPagoQrRequest p, UsuarioAutenticado actor) {
-        String referencia = p == null || p.referencia() == null ? "" : p.referencia().trim();
-
         reservaPropia(idReserva, actor);
+        return confirmar(idReserva, p, actor);
+    }
+
+    /** Lo mismo para un invitado sin cuenta: el pago lo firma el usuario técnico "Reservas en línea". */
+    @Transactional
+    public PagoAnticipoResponse confirmarQrInvitado(String codigo, ConfirmarPagoQrRequest p) {
+        return confirmar(reservaInvitadoService.porCodigo(codigo).getIdReserva(), p, actorReservasWeb.actor());
+    }
+
+    private PagoAnticipoResponse confirmar(Integer idReserva, ConfirmarPagoQrRequest p, UsuarioAutenticado actor) {
+        String referencia = p == null || p.referencia() == null ? "" : p.referencia().trim();
         Reserva reserva = pagoAnticipoService.reservaPorCobrar(idReserva, true);
         BigDecimal monto = reserva.getMontoAnticipo();
 

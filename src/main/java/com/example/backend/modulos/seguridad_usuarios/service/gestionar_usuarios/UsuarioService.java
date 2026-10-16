@@ -56,6 +56,7 @@ public class UsuarioService {
         int tamanoEfectivo = tamano <= 0 ? TAMANO_PAGINA_DEFECTO : Math.min(tamano, TAMANO_PAGINA_MAXIMO);
         Pageable paginable = PageRequest.of(Math.max(pagina, 0), tamanoEfectivo, Sort.by("nombre").ascending());
         Specification<Usuario> filtro = Specification.allOf(
+                UsuarioSpecifications.sinUsuariosTecnicos(),
                 UsuarioSpecifications.conEstado(estado),
                 UsuarioSpecifications.conRol(rol),
                 UsuarioSpecifications.coincideCon(q));
