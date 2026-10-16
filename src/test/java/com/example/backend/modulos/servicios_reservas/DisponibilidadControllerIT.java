@@ -101,9 +101,13 @@ class DisponibilidadControllerIT extends CitasBaseTest {
                 INSERT INTO reserva (cliente_id, empleado_id, servicio_id, fecha, hora_inicio, hora_fin, canal, estado)
                 VALUES (?, ?, ?, ?, '13:00', '13:30', 'PRESENCIAL', 'ATENDIDA')""", cliente, barbero, corte, FECHA);
 
-        List<String> horas = inicios(consultar(admin, consulta(corte, FECHA)).get("horarios"));
+        JsonNode respuesta = consultar(admin, consulta(corte, FECHA));
+        List<String> horas = inicios(respuesta.get("horarios"));
         assertThat(horas).contains("09:30", "10:30", "12:00", "13:30")
                 .doesNotContain("10:00", "11:00", "11:30", "13:00");
+        // Las que chocan con una cita vienen aparte, para mostrarlas en rojo en la grilla.
+        assertThat(inicios(respuesta.get("barberos").get(0).get("horasOcupadas")))
+                .containsExactly("10:00", "11:00", "11:30", "13:00");
 
         List<String> reprogramando = inicios(consultar(admin, consulta(corte, FECHA)
                 .param("excluirReserva", String.valueOf(diez))).get("horarios"));

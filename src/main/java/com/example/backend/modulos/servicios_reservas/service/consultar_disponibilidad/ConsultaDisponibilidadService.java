@@ -164,7 +164,7 @@ public class ConsultaDisponibilidadService {
             String nombre = barbero.getUsuario().getNombre();
             if (atencion == null) {
                 porBarbero.add(new DisponibilidadBarbero(barbero.getIdEmpleado(), nombre, null, null,
-                        "La barbería no atiende los " + dia.etiqueta(), List.of()));
+                        "La barbería no atiende los " + dia.etiqueta(), List.of(), List.of()));
                 continue;
             }
             Jornada jornada = jornadaDe(barbero.getIdEmpleado(), fecha, dia);
@@ -172,13 +172,14 @@ public class ConsultaDisponibilidadService {
             if (efectiva == null) {
                 String motivo = jornada.motivo() != null ? jornada.motivo()
                         : "Su horario no coincide con el horario de atención";
-                porBarbero.add(new DisponibilidadBarbero(barbero.getIdEmpleado(), nombre, null, null, motivo, List.of()));
+                porBarbero.add(new DisponibilidadBarbero(barbero.getIdEmpleado(), nombre, null, null, motivo,
+                        List.of(), List.of()));
                 continue;
             }
-            List<HoraLibre> libres = huecos(efectiva, ocupado.getOrDefault(barbero.getIdEmpleado(), List.of()),
-                    minutos, desde);
+            List<Franja> citas = ocupado.getOrDefault(barbero.getIdEmpleado(), List.of());
+            List<HoraLibre> libres = huecos(efectiva, citas, minutos, desde);
             porBarbero.add(new DisponibilidadBarbero(barbero.getIdEmpleado(), nombre,
-                    efectiva.inicio(), efectiva.fin(), null, libres));
+                    efectiva.inicio(), efectiva.fin(), null, libres, ocupados(efectiva, citas, minutos, desde)));
             for (HoraLibre h : libres) {
                 porHora.computeIfAbsent(h.horaInicio(), k -> new HorarioAcumulado(h.horaFin()))
                         .barberos.add(new HorarioDisponible.BarberoLibre(barbero.getIdEmpleado(), nombre));
@@ -225,6 +226,17 @@ public class ConsultaDisponibilidadService {
      * solo se ofrecen horas posteriores (consulta del mismo día).
      */
     static List<HoraLibre> huecos(Franja jornada, List<Franja> ocupadas, int minutos, LocalTime desde) {
+        return inicios(jornada, ocupadas, minutos, desde, true);
+    }
+
+    /** Las horas de inicio de la jornada que SÍ chocan con una cita (la grilla las muestra en rojo). */
+    static List<HoraLibre> ocupados(Franja jornada, List<Franja> ocupadas, int minutos, LocalTime desde) {
+        return inicios(jornada, ocupadas, minutos, desde, false);
+    }
+
+    /** Recorre los inicios posibles de la jornada y se queda con los libres o con los que chocan con una cita. */
+    private static List<HoraLibre> inicios(Franja jornada, List<Franja> ocupadas, int minutos, LocalTime desde,
+                                           boolean quiereLibres) {
         List<HoraLibre> libres = new ArrayList<>();
         int fin = aMinutos(jornada.fin());
         for (int inicio = aMinutos(jornada.inicio()); inicio + minutos <= fin; inicio += PASO_MINUTOS) {
@@ -234,7 +246,7 @@ public class ConsultaDisponibilidadService {
                 continue;
             }
             boolean libre = ocupadas.stream().noneMatch(o -> h0.isBefore(o.fin()) && h1.isAfter(o.inicio()));
-            if (libre) {
+            if (libre == quiereLibres) {
                 libres.add(new HoraLibre(h0, h1));
             }
         }
