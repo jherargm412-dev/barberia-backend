@@ -18,11 +18,12 @@ public interface PasarelaQr {
     }
 
     /**
-     * Genera un QR por el monto exacto (flujo A, paso 2).
+     * Genera un QR por el monto exacto (flujo A, paso 2). Vence a los minutos de vigencia o en
+     * {@code venceComoMaximo} si es antes (el plazo para pagar la cita web), así no se paga una cita ya vencida.
      *
      * @throws PasarelaQrException si el servicio de pagos no responde (flujo 2a)
      */
-    QrGenerado generar(Integer idReserva, BigDecimal monto);
+    QrGenerado generar(Integer idReserva, BigDecimal monto, LocalDateTime venceComoMaximo);
 
     /**
      * ¿Se recibió el pago de esa referencia, por ese monto y para esa reserva? {@code false} significa pago

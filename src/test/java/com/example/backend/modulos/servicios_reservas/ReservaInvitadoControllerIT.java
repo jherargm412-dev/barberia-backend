@@ -1,11 +1,15 @@
 package com.example.backend.modulos.servicios_reservas;
 
 import com.example.backend.modulos.seguridad_usuarios.entity.Bitacora;
+import jakarta.persistence.EntityManager;
+import jakarta.persistence.PersistenceContext;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.http.MediaType;
 import org.springframework.test.web.servlet.MvcResult;
 import org.springframework.test.web.servlet.ResultActions;
+import com.example.backend.modulos.servicios_reservas.service.registrar_pago_anticipo.PagoAnticipoWebService;
+import com.example.backend.modulos.servicios_reservas.service.solicitar_cita.SolicitudCitaService;
 import tools.jackson.databind.JsonNode;
 
 import java.time.LocalDate;
@@ -20,6 +24,9 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 
 /** CU12 + CU14 sin cuenta: el invitado reserva con nombre y teléfono y paga el anticipo con el enlace de su cita. */
 class ReservaInvitadoControllerIT extends CitasBaseTest {
+
+    @PersistenceContext
+    EntityManager entityManager;
 
     private static final String URL = "/api/v1/publico/citas";
     private static final LocalDate DIA = proximoDiaDeSemana(LocalDate.now(Bitacora.ZONA_HORARIA));
@@ -48,7 +55,7 @@ class ReservaInvitadoControllerIT extends CitasBaseTest {
     }
 
     @Test
-    @DisplayName("1. Sin cuenta: 201 WEB/PENDIENTE con código; crea el cliente (bitácora 'Reservas en línea'); el mismo teléfono reutiliza al cliente")
+    @DisplayName("1. Sin cuenta: 201 WEB/PENDIENTE con código; crea el cliente (bitácora 'Reservas en línea'); el mismo teléfono reutiliza al cliente; máximo 2 sin pagar")
     void solicitarSinCuenta() throws Exception {
         String admin = tokenAdmin();
         int corte = idServicio("Corte Clásico");
@@ -67,16 +74,24 @@ class ReservaInvitadoControllerIT extends CitasBaseTest {
         assertThat(r.get("codigo").asString()).hasSize(36);
         assertThat(r.get("reserva").get("canal").asString()).isEqualTo("WEB");
         assertThat(r.get("reserva").get("estado").asString()).isEqualTo("PENDIENTE");
-        assertThat(r.get("reserva").get("cliente").get("nombre").asString()).isEqualTo("Ana Invitada");
+        // La respuesta pública no revela al cliente: solo iniciales y los últimos 4 dígitos del teléfono.
+        assertThat(r.get("reserva").get("cliente").get("nombre").asString()).isEqualTo("A. I.");
+        assertThat(r.get("reserva").get("cliente").get("telefono").asString()).isEqualTo("•••• 1223");
+        assertThat(r.get("reserva").get("cliente").get("idCliente").isNull()).isTrue();
         assertThat(r.get("reserva").get("pagarAntesDe").isNull()).isFalse();
-        int idCliente = r.get("reserva").get("cliente").get("idCliente").asInt();
 
         Bitacora b = bitacoraRepository.findByAccionOrderByIdBitacoraDesc("RESERVA_CREAR").getFirst();
         assertThat(b.getUsuario().getNombre()).isEqualTo("Reservas en línea");
 
         // Con el mismo teléfono no se duplica el cliente.
-        JsonNode otra = solicitar(pedido("Ana I.", "70011223", corte, barbero, "11:00", "11:30"));
-        assertThat(otra.get("reserva").get("cliente").get("idCliente").asInt()).isEqualTo(idCliente);
+        solicitar(pedido("Ana I.", "70011223", corte, barbero, "11:00", "11:30"));
+        assertThat(jdbcTemplate.queryForObject("SELECT count(*) FROM cliente WHERE telefono = '70011223'", Integer.class))
+                .isEqualTo(1);
+
+        // Con 2 citas sin pagar no puede reservar una tercera (nadie bloquea la agenda sin pagar).
+        publico(URL, pedido("Ana", "70011223", corte, barbero, "12:00", "12:30"))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.message").value(SolicitudCitaService.MSG_MAX_SIN_PAGAR));
     }
 
     @Test
@@ -108,6 +123,34 @@ class ReservaInvitadoControllerIT extends CitasBaseTest {
     }
 
     @Test
+    @DisplayName("4. El QR no dura más que el plazo para pagar la cita; con el plazo vencido no se genera")
+    void qrDentroDelPlazo() throws Exception {
+        String admin = tokenAdmin();
+        int corte = idServicio("Corte Clásico");
+        int barbero = nuevoBarbero(admin, "barbero4.inv@houseofcut.bo", corte);
+        abrirCaja(admin);
+        JsonNode r = solicitar(pedido("Dora", "70044556", corte, barbero, "10:00", "10:30"));
+        String codigo = r.get("codigo").asString();
+
+        // Faltan 5 minutos para el plazo: el QR vence con el plazo, no a los 15 minutos.
+        jdbcTemplate.update("UPDATE reserva SET fecha_registro = fecha_registro - INTERVAL '25 minutes' WHERE codigo_acceso = ?",
+                codigo);
+        entityManager.clear(); // el UPDATE por SQL no se ve en las entidades ya cargadas en esta transacción
+        String pagarAntesDe = leer(mockMvc.perform(get(URL + "/" + codigo)).andReturn()).get("pagarAntesDe").asString();
+        String venceEn = leer(publico(URL + "/" + codigo + "/anticipo/qr", null)
+                .andExpect(status().isOk()).andReturn()).get("venceEn").asString();
+        assertThat(venceEn).startsWith(pagarAntesDe); // mismo minuto que el plazo, no 15 minutos después
+
+        // Plazo vencido (aunque la tarea todavía no la canceló): ya no se puede pagar.
+        jdbcTemplate.update("UPDATE reserva SET fecha_registro = fecha_registro - INTERVAL '10 minutes' WHERE codigo_acceso = ?",
+                codigo);
+        entityManager.clear(); // el UPDATE por SQL no se ve en las entidades ya cargadas en esta transacción
+        publico(URL + "/" + codigo + "/anticipo/qr", null)
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.message").value(PagoAnticipoWebService.MSG_PLAZO_VENCIDO));
+    }
+
+    @Test
     @DisplayName("3. Con el código: ver la cita y pagar el QR (CONFIRMADA, ingreso en caja); código inventado: 404")
     void pagarConElEnlace() throws Exception {
         String admin = tokenAdmin();
@@ -117,7 +160,7 @@ class ReservaInvitadoControllerIT extends CitasBaseTest {
 
         mockMvc.perform(get(URL + "/" + codigo))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.cliente.nombre").value("Carla"))
+                .andExpect(jsonPath("$.cliente.nombre").value("C."))
                 .andExpect(jsonPath("$.anticipoPagado").value(false));
         mockMvc.perform(get(URL + "/no-existe")).andExpect(status().isNotFound());
         publico(URL + "/no-existe/anticipo/qr", null).andExpect(status().isNotFound());

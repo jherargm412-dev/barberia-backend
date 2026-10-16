@@ -31,8 +31,8 @@ public class ReservaMapper {
                 e == null ? null : new ReservaResponse.BarberoCita(e.getIdEmpleado(), e.getUsuario().getNombre()));
     }
 
-    /** Solo una cita web pendiente y sin pagar tiene hora límite para pagar. */
-    private LocalDateTime pagarAntesDe(Reserva r) {
+    /** Solo una cita web pendiente y sin pagar tiene hora límite para pagar (null en las demás). */
+    public LocalDateTime pagarAntesDe(Reserva r) {
         boolean porPagar = Reserva.CANAL_WEB.equals(r.getCanal()) && Reserva.PENDIENTE.equals(r.getEstado())
                 && !r.isAnticipoPagado() && r.getFechaRegistro() != null;
         return porPagar ? r.getFechaRegistro().plusMinutes(minutosParaPagar) : null;

@@ -14,7 +14,6 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.time.Clock;
 import java.time.LocalDateTime;
-import java.util.List;
 import java.util.Map;
 
 /**
@@ -42,8 +41,15 @@ public class VencimientoSolicitudesService {
     @Transactional
     public int cancelarVencidas() {
         LocalDateTime limite = LocalDateTime.now(reloj).minusMinutes(minutosParaPagar);
-        List<Reserva> vencidas = reservaRepository.webSinPagarAntesDe(limite);
-        for (Reserva r : vencidas) {
+        int canceladas = 0;
+        for (Integer id : reservaRepository.webSinPagarAntesDe(limite)) {
+            // Se bloquea la fila y se vuelve a revisar: si el cliente pagó justo ahora (CU14 también la bloquea),
+            // o recepción la cambió, ya no se cancela. Así una cita pagada nunca queda CANCELADA.
+            Reserva r = reservaRepository.bloquear(id).orElse(null);
+            if (r == null || !Reserva.PENDIENTE.equals(r.getEstado()) || r.isAnticipoPagado()) {
+                continue;
+            }
+            canceladas++;
             r.setEstado(Reserva.CANCELADA);
             reservaRepository.save(r);
             // La bitácora exige un usuario: el cliente si reservó con su cuenta; si fue un invitado, "Reservas en línea".
@@ -53,9 +59,9 @@ public class VencimientoSolicitudesService {
                     Map.of("idReserva", r.getIdReserva(), "estado", Reserva.PENDIENTE),
                     Map.of("idReserva", r.getIdReserva(), "estado", Reserva.CANCELADA));
         }
-        if (!vencidas.isEmpty()) {
-            log.info("Citas web canceladas por falta de pago del anticipo: {}", vencidas.size());
+        if (canceladas > 0) {
+            log.info("Citas web canceladas por falta de pago del anticipo: {}", canceladas);
         }
-        return vencidas.size();
+        return canceladas;
     }
 }

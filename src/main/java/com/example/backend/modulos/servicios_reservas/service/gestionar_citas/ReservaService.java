@@ -228,7 +228,7 @@ public class ReservaService {
 
     @Transactional
     public ReservaResponse reprogramar(Integer id, ReprogramarReservaRequest p, UsuarioAutenticado actor) {
-        Reserva reserva = buscar(id);
+        Reserva reserva = buscarBloqueada(id);
         exigirNoFinal(reserva);
         ReprogramarReservaRequest peticion = p == null ? new ReprogramarReservaRequest(null, null, null, null) : p;
         Errores vacios = new Errores();
@@ -278,7 +278,7 @@ public class ReservaService {
      */
     @Transactional
     public ReservaResponse confirmar(Integer id, UsuarioAutenticado actor) {
-        Reserva reserva = buscar(id);
+        Reserva reserva = buscarBloqueada(id);
         if (!reserva.isAnticipoPagado() && !reserva.estaFinalizada()
                 && !Reserva.CONFIRMADA.equals(reserva.getEstado())) {
             throw new ConflictoException(MSG_CONFIRMAR_SIN_PAGO);
@@ -304,7 +304,7 @@ public class ReservaService {
     }
 
     private ReservaResponse cambiarEstado(Integer id, String destino, String accion, UsuarioAutenticado actor) {
-        Reserva reserva = buscar(id);
+        Reserva reserva = buscarBloqueada(id);
         if (reserva.getEstado().equals(destino)) {
             return mapper.aResponse(reserva); // idempotente: un doble clic no duplica la bitácora
         }
@@ -318,11 +318,15 @@ public class ReservaService {
             throw new ValidacionNegocioException(MSG_TOLERANCIA);
         }
         String anterior = reserva.getEstado();
+        // Regla de negocio: el anticipo pagado nunca se devuelve, aunque se cancele la cita.
+        String nota = Reserva.CANCELADA.equals(destino) && reserva.isAnticipoPagado()
+                ? " (el anticipo pagado no se devuelve)" : "";
         return guardando(() -> {
             reserva.setEstado(destino);
             Reserva guardada = reservaRepository.saveAndFlush(reserva);
             bitacoraService.registrar(referenciaActor(actor), accion, TABLA_RESERVA,
-                    "Cita #" + id + " de '" + guardada.getCliente().getNombre() + "': " + anterior + " → " + destino,
+                    "Cita #" + id + " de '" + guardada.getCliente().getNombre() + "': " + anterior + " → " + destino
+                            + nota,
                     Map.of("idReserva", id, "estado", anterior),
                     Map.of("idReserva", id, "estado", destino));
             return mapper.aResponse(guardada);
@@ -426,6 +430,15 @@ public class ReservaService {
     private Reserva buscar(Integer id) {
         return reservaRepository.findWithDetalleByIdReserva(id)
                 .orElseThrow(() -> new RecursoNoEncontradoException("Cita no encontrada: " + id));
+    }
+
+    /**
+     * Igual que {@link #buscar}, pero bloqueando la fila hasta el fin de la transacción: si a la vez se cobra el
+     * anticipo (CU14) o vence la cita web (CU12), uno espera al otro y ve el estado ya actualizado.
+     */
+    private Reserva buscarBloqueada(Integer id) {
+        reservaRepository.bloquear(id).orElseThrow(() -> new RecursoNoEncontradoException("Cita no encontrada: " + id));
+        return buscar(id);
     }
 
     private Usuario referenciaActor(UsuarioAutenticado actor) {

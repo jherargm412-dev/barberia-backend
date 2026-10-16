@@ -31,13 +31,16 @@ public class PasarelaQrSimulada implements PasarelaQr {
     private long vigenciaMinutos;
 
     @Override
-    public QrGenerado generar(Integer idReserva, BigDecimal monto) {
+    public QrGenerado generar(Integer idReserva, BigDecimal monto, LocalDateTime venceComoMaximo) {
         LocalDateTime ahora = ahora();
         // Para que la memoria no crezca sin límite, se olvidan los QR ya vencidos.
         emitidos.values().removeIf(qr -> qr.venceEn().isBefore(ahora));
 
         String referencia = "HOC-" + UUID.randomUUID().toString().replace("-", "").substring(0, 12).toUpperCase();
         LocalDateTime venceEn = ahora.plusMinutes(vigenciaMinutos);
+        if (venceComoMaximo != null && venceComoMaximo.isBefore(venceEn)) {
+            venceEn = venceComoMaximo;
+        }
         emitidos.put(referencia, new QrEmitido(idReserva, monto, venceEn));
 
         String contenido = "HOUSEOFCUT|" + referencia + "|" + monto.toPlainString();

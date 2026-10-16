@@ -119,13 +119,24 @@ public interface ReservaRepository extends JpaRepository<Reserva, Integer>, JpaS
     @Query("select r from Reserva r where r.idReserva = :id")
     Optional<Reserva> bloquear(@Param("id") Integer idReserva);
 
-    /** CU12: citas web PENDIENTE, sin anticipo pagado, registradas antes de {@code limite} (ya vencieron). */
+    /**
+     * CU12: ids de las citas web PENDIENTE, sin anticipo pagado, registradas antes de {@code limite} (ya vencieron).
+     * Solo los ids: cada una se bloquea y se vuelve a revisar antes de cancelarla, por si justo se pagó.
+     */
     @Query("""
-            select r from Reserva r join fetch r.cliente c left join fetch c.usuario
+            select r.idReserva from Reserva r
             where r.canal = 'WEB' and r.estado = 'PENDIENTE' and r.fechaRegistro < :limite
               and not exists (select 1 from PagoAnticipo p where p.reserva = r)
             """)
-    List<Reserva> webSinPagarAntesDe(@Param("limite") LocalDateTime limite);
+    List<Integer> webSinPagarAntesDe(@Param("limite") LocalDateTime limite);
+
+    /** CU12: cuántas citas web del cliente siguen PENDIENTE sin pagar (para limitar las reservas sin pagar). */
+    @Query("""
+            select count(r) from Reserva r
+            where r.cliente.idCliente = :idCliente and r.canal = 'WEB' and r.estado = 'PENDIENTE'
+              and not exists (select 1 from PagoAnticipo p where p.reserva = r)
+            """)
+    long contarWebSinPagar(@Param("idCliente") Integer idCliente);
 
     /** CU12 "Mis citas": las citas del cliente, de la más próxima a la más lejana (las pasadas al final). */
     @EntityGraph(attributePaths = {"cliente", "servicio", "empleado", "empleado.usuario"})

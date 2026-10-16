@@ -83,19 +83,53 @@ public class ReservaInvitadoService {
                         Map.of("servicioId", ReservaService.MSG_SERVICIO_INVALIDO)));
         UsuarioAutenticado actor = actorReservasWeb.actor();
         Cliente cliente = clienteInvitado(nombre, telefono);
+        SolicitudCitaService.exigirCupoWeb(cliente, reservaRepository);
 
         ReservaResponse creada = reservaService.crearCita(cliente, servicio, peticion.empleadoId(), peticion.fecha(),
                 peticion.horaInicio(), peticion.horaFin(), Reserva.CANAL_WEB, Reserva.PENDIENTE, actor);
         Reserva reserva = reservaRepository.findById(creada.idReserva()).orElseThrow();
         reserva.setCodigoAcceso(UUID.randomUUID().toString());
         reservaRepository.saveAndFlush(reserva);
-        return new RespuestaCitaInvitado(RespuestaCitaInvitado.SOLICITADA, reserva.getCodigoAcceso(), creada);
+        return new RespuestaCitaInvitado(RespuestaCitaInvitado.SOLICITADA, reserva.getCodigoAcceso(), publica(creada));
     }
 
     /** El invitado vuelve a ver su cita con el código de su enlace. */
     @Transactional(readOnly = true)
     public ReservaResponse consultar(String codigo) {
-        return reservaMapper.aResponse(porCodigo(codigo));
+        return publica(reservaMapper.aResponse(porCodigo(codigo)));
+    }
+
+    /**
+     * Lo que se muestra de una cita en las rutas públicas: sin el id del cliente, con las iniciales de su nombre y
+     * los últimos 4 dígitos del teléfono. Si el teléfono ya era de otro cliente, así no se revela quién es.
+     */
+    public static ReservaResponse publica(ReservaResponse r) {
+        ReservaResponse.ClienteCita c = r.cliente();
+        ReservaResponse.ClienteCita oculto = c == null ? null
+                : new ReservaResponse.ClienteCita(null, iniciales(c.nombre()), ultimosDigitos(c.telefono()));
+        return new ReservaResponse(r.idReserva(), r.fecha(), r.horaInicio(), r.horaFin(), r.canal(), r.estado(),
+                r.montoAnticipo(), r.anticipoPagado(), r.pagarAntesDe(), oculto, r.servicio(), r.barbero());
+    }
+
+    /** "Ana María Rojas" → "A. M. R." */
+    private static String iniciales(String nombre) {
+        if (nombre == null || nombre.isBlank()) {
+            return null;
+        }
+        StringBuilder sb = new StringBuilder();
+        for (String parte : nombre.trim().split("\\s+")) {
+            sb.append(Character.toUpperCase(parte.charAt(0))).append(". ");
+        }
+        return sb.toString().trim();
+    }
+
+    /** "70011223" → "•••• 1223" */
+    private static String ultimosDigitos(String telefono) {
+        if (telefono == null) {
+            return null;
+        }
+        String digitos = telefono.replaceAll("[^0-9]", "");
+        return digitos.length() <= 4 ? "••••" : "•••• " + digitos.substring(digitos.length() - 4);
     }
 
     /** La cita de un invitado por su código; un código desconocido se responde como inexistente (404). */
