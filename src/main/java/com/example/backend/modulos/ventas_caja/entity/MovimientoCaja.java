@@ -35,4 +35,10 @@ public class MovimientoCaja {
     @ManyToOne(fetch = FetchType.LAZY, optional = false)
     @JoinColumn(name = "usuario_id", nullable = false)
     private Usuario usuario;
+    /** Pasarela externa (Stripe) y el id de su cobro; null en efectivo y QR. */
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "pasarela_pago_id")
+    private PasarelaPago pasarelaPago;
+    @Column(name = "referencia_externa", length = 100)
+    private String referenciaExterna;
 }
