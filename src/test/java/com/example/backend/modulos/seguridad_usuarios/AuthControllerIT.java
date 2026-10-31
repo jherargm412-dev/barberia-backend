@@ -39,7 +39,7 @@ class AuthControllerIT extends IntegracionBaseTest {
         assertThat(usuario.get("correo").asString()).isEqualTo(ADMIN_CORREO);
         assertThat(usuario.get("roles")).hasSize(1);
         assertThat(usuario.get("roles").get(0).asString()).isEqualTo("Administrador");
-        assertThat(usuario.get("permisos")).hasSize(30);
+        assertThat(usuario.get("permisos")).hasSize(32); // 30 de la semilla + 2 de pasarela de pago (V22)
 
         assertThat(bitacoraRepository.countByAccion("INICIO_SESION")).isEqualTo(antes + 1);
         Bitacora b = bitacoraRepository.findByAccionOrderByIdBitacoraDesc("INICIO_SESION").getFirst();

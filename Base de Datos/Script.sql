@@ -8,7 +8,7 @@ CREATE TABLE rol (
  descripcion VARCHAR(150),
  activo BOOLEAN NOT NULL DEFAULT TRUE
 );
--- ================================================================
+-- ==================================s==============================
 -- 2. PERMISO
 -- Catálogo de permisos granulares por módulo/acción
 -- ================================================================
@@ -77,12 +77,24 @@ CREATE TABLE horario (
  CONSTRAINT chk_horario_horas CHECK (hora_fin > hora_inicio)
 );
 -- ================================================================
--- 7. METODO_PAGO
--- Catálogo de métodos de pago (Efectivo, QR, Tarjeta, Transferencia)
+-- 7. PASARELA_PAGO
+-- Catálogo de métodos / pasarelas de pago (Efectivo, QR, Stripe...).
+-- api_key guarda SOLO la clave pública (pk_...). La clave secreta
+-- (sk_...) nunca va a la BD: vive en la variable STRIPE_SECRET_KEY.
+-- El backend copia api_key desde STRIPE_PUBLISHABLE_KEY al iniciar.
 -- ================================================================
-CREATE TABLE metodo_pago (
+CREATE TABLE pasarela_pago (
  id_metodo_pago SERIAL PRIMARY KEY,
- nombre VARCHAR(30) NOT NULL UNIQUE
+ nombre VARCHAR(30) NOT NULL UNIQUE,
+ descripcion VARCHAR(150),
+ proveedor VARCHAR(20) NOT NULL DEFAULT 'NINGUNO'
+ CHECK (proveedor IN ('NINGUNO', 'STRIPE')),
+ api_key VARCHAR(255), -- clave pública (pk_...)
+ modo VARCHAR(20) NOT NULL DEFAULT 'PRUEBA'
+ CHECK (modo IN ('PRUEBA', 'PRODUCCION')),
+ moneda CHAR(3) NOT NULL DEFAULT 'BOB', -- ISO 4217
+ activo BOOLEAN NOT NULL DEFAULT TRUE,
+ fecha_creacion TIMESTAMP NOT NULL DEFAULT NOW()
 );
 -- ================================================================
 -- 8. CATEGORIA
@@ -260,7 +272,7 @@ CREATE TABLE nota_compra (
  proveedor_id INTEGER NOT NULL REFERENCES
 proveedor(id_proveedor),
  metodo_pago_id INTEGER REFERENCES
-metodo_pago(id_metodo_pago),
+pasarela_pago(id_metodo_pago),
  nro_fact VARCHAR(30),
  fecha DATE NOT NULL DEFAULT
 CURRENT_DATE,
@@ -336,7 +348,7 @@ CREATE TABLE nota_venta (
  cliente_id INTEGER NOT NULL REFERENCES
 cliente(id_cliente),
  metodo_pago_id INTEGER NOT NULL REFERENCES
-metodo_pago(id_metodo_pago),
+pasarela_pago(id_metodo_pago),
  caja_id INTEGER NOT NULL REFERENCES
 caja(id_caja),
  nro_fact VARCHAR(30),
