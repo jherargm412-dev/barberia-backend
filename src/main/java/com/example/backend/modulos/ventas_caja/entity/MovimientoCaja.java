@@ -41,4 +41,9 @@ public class MovimientoCaja {
     private PasarelaPago pasarelaPago;
     @Column(name = "referencia_externa", length = 100)
     private String referenciaExterna;
+
+    /** La venta que este ingreso paga (CU20); null en los anticipos, los egresos y las compras. */
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "nota_venta_id")
+    private NotaVenta notaVenta;
 }
