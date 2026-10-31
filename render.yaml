@@ -1,0 +1,55 @@
+# Prueba independiente: PostgreSQL Free vence a los 30 días.
+# El servicio web Free se suspende tras 15 minutos sin tráfico.
+databases:
+  - name: houseofcut-test-db
+    plan: free
+    region: virginia
+    databaseName: barber
+    user: houseofcut
+    postgresMajorVersion: "17"
+    ipAllowList: []
+
+services:
+  - type: web
+    name: houseofcut-test-api
+    runtime: docker
+    branch: codex/deploy-render-test
+    plan: free
+    region: virginia
+    dockerfilePath: ./Dockerfile
+    healthCheckPath: /actuator/health
+    envVars:
+      - key: SPRING_PROFILES_ACTIVE
+        value: prod
+      - key: DB_HOST
+        fromDatabase:
+          name: houseofcut-test-db
+          property: host
+      - key: DB_PORT
+        fromDatabase:
+          name: houseofcut-test-db
+          property: port
+      - key: DB_NAME
+        fromDatabase:
+          name: houseofcut-test-db
+          property: database
+      - key: DB_USERNAME
+        fromDatabase:
+          name: houseofcut-test-db
+          property: user
+      - key: DB_PASSWORD
+        fromDatabase:
+          name: houseofcut-test-db
+          property: password
+      - key: JWT_SECRET
+        generateValue: true
+      - key: CORS_ORIGIN
+        value: https://houseofcut-swart.vercel.app,http://localhost:5173
+      - key: APP_FRONTEND_URL
+        value: https://houseofcut-swart.vercel.app
+      - key: APP_SEED_ADMIN_EMAIL
+        sync: false
+      - key: APP_SEED_ADMIN_PASSWORD
+        sync: false
+      - key: APP_SEED_ADMIN_NOMBRE
+        value: Administrador de pruebas
