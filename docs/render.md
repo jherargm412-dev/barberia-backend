@@ -1,7 +1,8 @@
 # Prueba de HOUSE of CUT en Render
 
 `render.yaml` crea un backend Docker y una base PostgreSQL 17 independiente,
-ambos en plan Free y en la misma región. No importa los datos de Railway.
+ambos en plan Free y en la misma región, más un sitio estático React gratuito.
+No importa los datos de Railway.
 
 ## Crear la prueba
 
@@ -13,11 +14,14 @@ ambos en plan Free y en la misma región. No importa los datos de Railway.
 5. Esperar el arranque: Flyway crea el esquema y el seeder crea el administrador.
 6. Comprobar `<URL-del-backend>/actuator/health` y
    `<URL-del-backend>/api/v1/publico/servicios`.
-7. En el frontend, cambiar únicamente el destino del proxy `/api/v1/:path*`
-   de `vercel.json` al nuevo backend y volver a publicar con
-   `VITE_API_URL=/api/v1`. La versión ya publicada en Vercel sigue usando
-   Railway hasta completar ese cambio.
-8. Probar login, usuarios/barberos, catálogo, horarios, reservas y caja.
+7. Abrir el sitio estático `houseofcut-test-web`. Se compila desde la rama
+   `codex/deploy-render-test` del repositorio frontend, con `VITE_API_URL`
+   apuntando a la API Render. La regla `/*` a `/index.html` permite recargar
+   rutas de React como `/agenda` o `/login`.
+8. Verificar la URL asignada por Render. Si difiere de
+   `https://houseofcut-test-web.onrender.com`, actualizar `CORS_ORIGIN` y
+   `APP_FRONTEND_URL` en este Blueprint y sincronizarlo.
+9. Probar login, usuarios/barberos, catálogo, horarios, reservas y caja.
    Una base nueva no contiene los clientes, servicios ni citas de Railway.
 
 ## Alcance de esta prueba

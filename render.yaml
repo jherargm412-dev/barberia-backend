@@ -44,12 +44,31 @@ services:
       - key: JWT_SECRET
         generateValue: true
       - key: CORS_ORIGIN
-        value: https://houseofcut-swart.vercel.app,http://localhost:5173
+        value: https://houseofcut-test-web.onrender.com,https://houseofcut-swart.vercel.app,http://localhost:5173
       - key: APP_FRONTEND_URL
-        value: https://houseofcut-swart.vercel.app
+        value: https://houseofcut-test-web.onrender.com
       - key: APP_SEED_ADMIN_EMAIL
         sync: false
       - key: APP_SEED_ADMIN_PASSWORD
         sync: false
       - key: APP_SEED_ADMIN_NOMBRE
         value: Administrador de pruebas
+
+  - type: web
+    name: houseofcut-test-web
+    runtime: static
+    repo: https://github.com/jherargm412-dev/barberia-frontend
+    branch: codex/deploy-render-test
+    buildCommand: npm ci --no-audit --no-fund && npm run build
+    staticPublishPath: ./dist
+    envVars:
+      - key: NODE_VERSION
+        value: "24"
+      - key: SKIP_INSTALL_DEPS
+        value: "true"
+      - key: VITE_API_URL
+        value: https://houseofcut-test-api.onrender.com/api/v1
+    routes:
+      - type: rewrite
+        source: /*
+        destination: /index.html
