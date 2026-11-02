@@ -20,6 +20,8 @@ public class PagoAnticipo {
     public static final String EFECTIVO = "EFECTIVO";
     public static final String QR = "QR";
     public static final String MIXTO = "MIXTO";
+    /** Pago web con tarjeta mediante Stripe (V28). */
+    public static final String TARJETA = "TARJETA";
 
     @Id @GeneratedValue(strategy = GenerationType.IDENTITY)
     @Column(name = "id_pago_anticipo")
@@ -42,11 +44,18 @@ public class PagoAnticipo {
     @Column(name = "monto_qr", nullable = false, precision = 10, scale = 2)
     private BigDecimal montoQr = BigDecimal.ZERO;
 
+    @Column(name = "monto_tarjeta", nullable = false, precision = 10, scale = 2)
+    private BigDecimal montoTarjeta = BigDecimal.ZERO;
+
     @Column(name = "monto_total", nullable = false, precision = 10, scale = 2)
     private BigDecimal montoTotal;
 
     @Column(name = "referencia_qr", length = 60)
     private String referenciaQr;
+
+    /** Id del PaymentIntent de Stripe (pi_...) cuando se pagó con tarjeta. */
+    @Column(name = "referencia_tarjeta", length = 100)
+    private String referenciaTarjeta;
 
     @Column(name = "fecha_pago", nullable = false)
     private LocalDateTime fechaPago;

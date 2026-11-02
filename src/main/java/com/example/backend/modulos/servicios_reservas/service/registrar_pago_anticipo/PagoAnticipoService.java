@@ -25,6 +25,7 @@ import com.example.backend.modulos.servicios_reservas.repository.PagoAnticipoRep
 import com.example.backend.modulos.servicios_reservas.repository.ReservaRepository;
 import com.example.backend.modulos.ventas_caja.entity.Caja;
 import com.example.backend.modulos.ventas_caja.entity.MovimientoCaja;
+import com.example.backend.modulos.ventas_caja.entity.PasarelaPago;
 import com.example.backend.modulos.ventas_caja.repository.CajaRepository;
 import com.example.backend.modulos.ventas_caja.repository.MovimientoCajaRepository;
 import com.example.backend.security.UsuarioAutenticado;
@@ -59,6 +60,8 @@ public class PagoAnticipoService {
     // Bitácora.
     public static final String ANTICIPO_REGISTRAR = "ANTICIPO_REGISTRAR";
     public static final String TABLA_PAGO_ANTICIPO = "pago_anticipo";
+    // Medio de movimiento_caja para cobros con tarjeta (V21); no cuenta en el efectivo del arqueo.
+    private static final String MEDIO_TARJETA = "TARJETA";
     private static final String ESTADO_CAJA_ABIERTA = "ABIERTA";
     private static final String TIPO_INGRESO = "INGRESO";
 
@@ -94,6 +97,23 @@ public class PagoAnticipoService {
      */
     PagoAnticipoResponse guardarCobro(Reserva reserva, Caja caja, String metodo, BigDecimal efectivo,
                                       BigDecimal qr, String referenciaQr, UsuarioAutenticado actor) {
+        return guardar(reserva, caja, metodo, efectivo, qr, referenciaQr, null, actor);
+    }
+
+    /**
+     * Pago web con tarjeta (CU29): todo el anticipo entra como un ingreso TARJETA enlazado a la pasarela y al
+     * PaymentIntent de Stripe. Quien lo llama ya verificó con Stripe que el cobro se completó.
+     */
+    PagoAnticipoResponse guardarCobroTarjeta(Reserva reserva, Caja caja, CobroTarjeta tarjeta, UsuarioAutenticado actor) {
+        return guardar(reserva, caja, PagoAnticipo.TARJETA, BigDecimal.ZERO, BigDecimal.ZERO, null, tarjeta, actor);
+    }
+
+    /** Cobro con tarjeta ya confirmado por Stripe: id del PaymentIntent y pasarela por la que se cobró. */
+    record CobroTarjeta(String paymentIntentId, PasarelaPago pasarela) {}
+
+    private PagoAnticipoResponse guardar(Reserva reserva, Caja caja, String metodo, BigDecimal efectivo,
+                                         BigDecimal qr, String referenciaQr, CobroTarjeta tarjeta,
+                                         UsuarioAutenticado actor) {
         return guardando(() -> {
             LocalDateTime ahora = ahora();
             Usuario cobrador = usuarioRepository.getReferenceById(actor.idUsuario());
@@ -106,15 +126,22 @@ public class PagoAnticipoService {
             pago.setMontoQr(qr);
             pago.setMontoTotal(reserva.getMontoAnticipo());
             pago.setReferenciaQr(qr.signum() > 0 ? referenciaQr : null);
+            if (tarjeta != null) {
+                pago.setMontoTarjeta(reserva.getMontoAnticipo());
+                pago.setReferenciaTarjeta(tarjeta.paymentIntentId());
+            }
             pago.setFechaPago(ahora);
             pago.setUsuario(cobrador);
             pago = pagoAnticipoRepository.saveAndFlush(pago);
 
             if (efectivo.signum() > 0) {
-                ingresoEnCaja(caja, cobrador, reserva, efectivo, PagoAnticipo.EFECTIVO, ahora);
+                ingresoEnCaja(caja, cobrador, reserva, efectivo, PagoAnticipo.EFECTIVO, ahora, null);
             }
             if (qr.signum() > 0) {
-                ingresoEnCaja(caja, cobrador, reserva, qr, PagoAnticipo.QR, ahora);
+                ingresoEnCaja(caja, cobrador, reserva, qr, PagoAnticipo.QR, ahora, null);
+            }
+            if (tarjeta != null) {
+                ingresoEnCaja(caja, cobrador, reserva, pago.getMontoTarjeta(), MEDIO_TARJETA, ahora, tarjeta);
             }
 
             Map<String, Object> antes = Map.of("estado", reserva.getEstado());
@@ -237,9 +264,12 @@ public class PagoAnticipoService {
         }
     }
 
-    /** Un ingreso en la caja abierta (CU21). Un pago mixto genera dos: uno EFECTIVO y otro QR. */
+    /**
+     * Un ingreso en la caja (CU21). Un pago mixto genera dos: uno EFECTIVO y otro QR. Uno con tarjeta queda
+     * enlazado a la pasarela y al PaymentIntent (referencia_externa es UNIQUE: el mismo cobro no entra dos veces).
+     */
     private void ingresoEnCaja(Caja caja, Usuario cobrador, Reserva reserva, BigDecimal monto,
-                               String medioPago, LocalDateTime fecha) {
+                               String medioPago, LocalDateTime fecha, CobroTarjeta tarjeta) {
         MovimientoCaja movimiento = new MovimientoCaja();
         movimiento.setCaja(caja);
         movimiento.setTipo(TIPO_INGRESO);
@@ -248,6 +278,11 @@ public class PagoAnticipoService {
         movimiento.setMedioPago(medioPago);
         movimiento.setFecha(fecha);
         movimiento.setUsuario(cobrador);
+        if (tarjeta != null) {
+            movimiento.setPasarelaPago(tarjeta.pasarela());
+            movimiento.setReferenciaExterna(tarjeta.paymentIntentId());
+            movimiento.setObservaciones("Stripe " + tarjeta.paymentIntentId());
+        }
         movimientoCajaRepository.saveAndFlush(movimiento);
     }
 
@@ -262,6 +297,8 @@ public class PagoAnticipoService {
         datos.put("montoQr", p.getMontoQr());
         datos.put("montoTotal", p.getMontoTotal());
         datos.put("referenciaQr", p.getReferenciaQr());
+        datos.put("montoTarjeta", p.getMontoTarjeta());
+        datos.put("referenciaTarjeta", p.getReferenciaTarjeta());
         return datos;
     }
 }

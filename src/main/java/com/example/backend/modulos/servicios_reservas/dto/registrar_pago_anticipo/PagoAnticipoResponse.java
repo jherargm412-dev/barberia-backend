@@ -10,7 +10,8 @@ import com.example.backend.modulos.servicios_reservas.dto.gestionar_citas.Reserv
  * reserva ya CONFIRMADA. Sirve para mostrar o imprimir el comprobante.
  */
 public record PagoAnticipoResponse(Integer idPagoAnticipo, String metodo, BigDecimal montoEfectivo,
-                                   BigDecimal montoQr, BigDecimal montoTotal, String referenciaQr,
+                                   BigDecimal montoQr, BigDecimal montoTarjeta, BigDecimal montoTotal,
+                                   String referenciaQr, String referenciaTarjeta,
                                    LocalDateTime fechaPago, Integer idCaja, String registradoPor,
                                    ReservaResponse reserva) {
 }

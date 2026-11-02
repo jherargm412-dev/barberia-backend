@@ -10,8 +10,7 @@ import org.springframework.web.bind.annotation.ResponseStatus;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.http.HttpStatus;
 
-import com.example.backend.modulos.servicios_reservas.dto.registrar_pago_anticipo.ConfirmarPagoQrRequest;
-import com.example.backend.modulos.servicios_reservas.dto.registrar_pago_anticipo.QrAnticipoResponse;
+import com.example.backend.modulos.servicios_reservas.dto.registrar_pago_anticipo.AnticipoTarjetaResponse;
 import com.example.backend.modulos.servicios_reservas.dto.registrar_pago_anticipo.RegistrarAnticipoRequest;
 import com.example.backend.modulos.servicios_reservas.dto.registrar_pago_anticipo.RespuestaPagoAnticipo;
 import com.example.backend.modulos.servicios_reservas.service.registrar_pago_anticipo.PagoAnticipoService;
@@ -40,21 +39,21 @@ public class PagoAnticipoController {
                 pagoAnticipoService.registrar(id, peticion, actor));
     }
 
-    /** Flujo A, paso 2: el cliente pide el QR para pagar el anticipo de su propia reserva. */
-    @PostMapping("/{id}/anticipo/qr")
+    /** Flujo A, paso 2: el cliente prepara el pago con tarjeta (Stripe) del anticipo de su propia reserva. */
+    @PostMapping("/{id}/anticipo/tarjeta")
     @PreAuthorize("hasAuthority('ANTICIPO_PAGAR_PROPIO')")
-    public QrAnticipoResponse generarQr(@PathVariable Integer id, @AuthenticationPrincipal UsuarioAutenticado actor) {
-        return pagoAnticipoWebService.generarQr(id, actor);
+    public AnticipoTarjetaResponse iniciarTarjeta(@PathVariable Integer id,
+                                                  @AuthenticationPrincipal UsuarioAutenticado actor) {
+        return pagoAnticipoWebService.iniciarTarjeta(id, actor);
     }
 
-    /** Flujo A, pasos 4 a 7: el cliente confirma que pagó; se verifica el QR y la reserva queda confirmada. */
-    @PostMapping("/{id}/anticipo/confirmar-qr")
+    /** Flujo A, pasos 4 a 7: tras cobrar con Stripe.js se verifica el cobro y la reserva queda confirmada. */
+    @PostMapping("/{id}/anticipo/tarjeta/{paymentIntentId}/confirmacion")
     @ResponseStatus(HttpStatus.CREATED)
     @PreAuthorize("hasAuthority('ANTICIPO_PAGAR_PROPIO')")
-    public RespuestaPagoAnticipo confirmarQr(@PathVariable Integer id,
-                                             @RequestBody(required = false) ConfirmarPagoQrRequest peticion,
-                                             @AuthenticationPrincipal UsuarioAutenticado actor) {
+    public RespuestaPagoAnticipo confirmarTarjeta(@PathVariable Integer id, @PathVariable String paymentIntentId,
+                                                  @AuthenticationPrincipal UsuarioAutenticado actor) {
         return new RespuestaPagoAnticipo(RespuestaPagoAnticipo.REGISTRADO,
-                pagoAnticipoWebService.confirmarQr(id, peticion, actor));
+                pagoAnticipoWebService.confirmarTarjeta(id, paymentIntentId, actor));
     }
 }
