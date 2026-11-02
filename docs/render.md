@@ -6,8 +6,10 @@ No importa los datos de Railway.
 
 ## Crear la prueba
 
-1. Publicar esta configuración en una rama propia del repositorio backend.
-2. En Render, elegir New > Blueprint y seleccionar esa rama y `render.yaml`.
+1. Integrar esta configuración en `main` mediante un Pull Request revisado.
+2. En Render, elegir New > Blueprint y seleccionar `main` y `render.yaml`.
+   Durante la transición, el Blueprint existente puede leer la configuración
+   desde su rama actual; los dos servicios construyen exclusivamente desde `main`.
 3. Ingresar `APP_SEED_ADMIN_EMAIL` y una contraseña de prueba propia en
    `APP_SEED_ADMIN_PASSWORD`. No guardar contraseñas en Git.
 4. Comprobar que ambos recursos indiquen Free antes de desplegar.
@@ -15,7 +17,7 @@ No importa los datos de Railway.
 6. Comprobar `<URL-del-backend>/actuator/health` y
    `<URL-del-backend>/api/v1/publico/servicios`.
 7. Abrir el sitio estático `houseofcut-test-web`. Se compila desde la rama
-   `codex/deploy-render-test` del repositorio frontend, con `VITE_API_URL`
+   `main` del repositorio frontend, con `VITE_API_URL`
    apuntando a la API Render. La regla `/*` a `/index.html` permite recargar
    rutas de React como `/agenda` o `/login`.
 8. Verificar la URL asignada por Render. Si difiere de
@@ -35,7 +37,8 @@ No importa los datos de Railway.
   HTTPS con `APP_CORREO_PROVEEDOR=brevo`, `BREVO_API_KEY` y `MAIL_FROM`.
 - Los pagos con tarjeta requieren claves Stripe de prueba, agregadas directamente
   como `STRIPE_SECRET_KEY` y `STRIPE_PUBLISHABLE_KEY` en Render.
-- No definir `DB_URL` salvo que se quiera reemplazar la conexión derivada de
-  `DB_HOST`, `DB_PORT` y `DB_NAME`. Las credenciales de base las genera Render.
+- `DB_URL` usa placeholders que Spring resuelve desde `DB_HOST`, `DB_PORT`
+  y `DB_NAME`. Esto permite desplegar el `main` existente sin modificar su código.
+  Las credenciales de base las genera Render.
 
 Referencia: https://render.com/docs/blueprint-spec y https://render.com/docs/free.
