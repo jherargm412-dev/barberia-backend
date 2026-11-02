@@ -4,10 +4,18 @@ import com.example.backend.modulos.seguridad_usuarios.entity.Bitacora;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.test.web.servlet.MvcResult;
+import com.example.backend.modulos.servicios_reservas.service.registrar_pago_anticipo.PagoAnticipoWebService;
 
 import java.time.LocalDate;
 import java.util.HashMap;
 import java.util.Map;
+
+import static org.mockito.ArgumentMatchers.anyLong;
+import static org.mockito.ArgumentMatchers.anyMap;
+import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.when;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
@@ -17,7 +25,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 /**
- * CU14 Registrar Pago de Anticipo: cobro en mostrador (EFECTIVO, QR, MIXTO) y pago web con QR del cliente.
+ * CU14 Registrar Pago de Anticipo: cobro en mostrador (EFECTIVO, QR, MIXTO) y pago web del cliente con tarjeta (Stripe).
  * El anticipo de "Corte Clásico" es Bs 6.00 (20 % de 30).
  */
 class PagoAnticipoControllerIT extends CitasBaseTest {
@@ -133,7 +141,7 @@ class PagoAnticipoControllerIT extends CitasBaseTest {
     }
 
     @Test
-    @DisplayName("3. Web: el cliente genera el QR y confirma: 201, CONFIRMADA e ingreso QR; referencia inválida: 400; cita ajena: 404")
+    @DisplayName("3. Web con tarjeta (Stripe): el cliente paga y confirma: 201, CONFIRMADA e ingreso TARJETA; cobro sin completar o de otra cita: 400; cita ajena: 404")
     void pagoWeb() throws Exception {
         String admin = tokenAdmin();
         int corte = idServicio("Corte Clásico");
@@ -143,40 +151,92 @@ class PagoAnticipoControllerIT extends CitasBaseTest {
         String cliente = token("cliente3.cu14@houseofcut.bo", PASS);
         String otro = token("cliente3b.cu14@houseofcut.bo", PASS);
         int cita = citaWeb(cliente, corte, barbero, "09:00", "09:30");
+        int otraCita = citaWeb(cliente, corte, barbero, "10:00", "10:30");
+        String tarjeta = RESERVAS + "/" + cita + "/anticipo/tarjeta";
 
         // Sin caja abierta, el pago en línea no está disponible.
-        mockMvc.perform(conToken(post(RESERVAS + "/" + cita + "/anticipo/qr"), cliente))
+        mockMvc.perform(conToken(post(tarjeta), cliente))
                 .andExpect(status().isBadRequest())
                 .andExpect(jsonPath("$.message").value("El pago en línea no está disponible en este momento. Intente más tarde"));
         abrirCaja(admin);
 
         // Una cita ajena se trata como inexistente.
-        mockMvc.perform(conToken(post(RESERVAS + "/" + cita + "/anticipo/qr"), otro)).andExpect(status().isNotFound());
+        mockMvc.perform(conToken(post(tarjeta), otro)).andExpect(status().isNotFound());
 
-        MvcResult r = mockMvc.perform(conToken(post(RESERVAS + "/" + cita + "/anticipo/qr"), cliente))
+        // Stripe sin claves: la tarjeta no está disponible.
+        when(stripe.configurado()).thenReturn(false);
+        mockMvc.perform(conToken(post(tarjeta), cliente))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.message").value(PagoAnticipoWebService.MSG_TARJETA_NO_DISPONIBLE));
+        when(stripe.configurado()).thenReturn(true);
+
+        // Un cobro preparado para la otra cita no sirve para pagar esta.
+        CobroSimulado ajeno = simularStripe("pi_cu14otra");
+        mockMvc.perform(conToken(post(RESERVAS + "/" + otraCita + "/anticipo/tarjeta"), cliente)).andExpect(status().isOk());
+        ajeno.pagar();
+        mockMvc.perform(conToken(post(tarjeta + "/pi_cu14otra/confirmacion"), cliente))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.message").value("El cobro no corresponde al anticipo de esta cita"));
+
+        // El backend pide a Stripe el anticipo exacto (Bs 6.00 = 600 centavos).
+        CobroSimulado cobro = simularStripe("pi_cu14web");
+        mockMvc.perform(conToken(post(tarjeta), cliente))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.monto").value(6.00))
-                .andReturn();
-        String referencia = leer(r).get("referencia").asString();
+                .andExpect(jsonPath("$.paymentIntentId").value("pi_cu14web"))
+                .andExpect(jsonPath("$.clientSecret").value("pi_cu14web_secret"))
+                .andExpect(jsonPath("$.clavePublica").value("pk_test_citas"))
+                .andExpect(jsonPath("$.monto").value(6.00));
+        assertThat(cobro.monto).isEqualTo(600L);
 
-        mockMvc.perform(conToken(post(RESERVAS + "/" + cita + "/anticipo/confirmar-qr"), cliente)
-                        .content(json(Map.of("referencia", "HOC-INVENTADA"))))
+        // Todavía no pagó en Stripe: no se registra nada.
+        mockMvc.perform(conToken(post(tarjeta + "/pi_cu14web/confirmacion"), cliente))
                 .andExpect(status().isBadRequest())
                 .andExpect(jsonPath("$.message").value("El pago no ha sido confirmado. Verifique la transacción e intente nuevamente"));
 
-        mockMvc.perform(conToken(post(RESERVAS + "/" + cita + "/anticipo/confirmar-qr"), cliente)
-                        .content(json(Map.of("referencia", referencia))))
+        cobro.pagar();
+        MvcResult r = mockMvc.perform(conToken(post(tarjeta + "/pi_cu14web/confirmacion"), cliente))
                 .andExpect(status().isCreated())
-                .andExpect(jsonPath("$.pago.metodo").value("QR"))
-                .andExpect(jsonPath("$.pago.referenciaQr").value(referencia))
-                .andExpect(jsonPath("$.pago.reserva.estado").value("CONFIRMADA"));
+                .andExpect(jsonPath("$.pago.metodo").value("TARJETA"))
+                .andExpect(jsonPath("$.pago.montoTarjeta").value(6.00))
+                .andExpect(jsonPath("$.pago.referenciaTarjeta").value("pi_cu14web"))
+                .andExpect(jsonPath("$.pago.reserva.estado").value("CONFIRMADA"))
+                .andReturn();
+        int idPago = leer(r).get("pago").get("idPagoAnticipo").asInt();
 
+        // Reintento (por ejemplo, tras un corte de red): devuelve el mismo pago y no duplica el ingreso.
+        mockMvc.perform(conToken(post(tarjeta + "/pi_cu14web/confirmacion"), cliente))
+                .andExpect(status().isCreated())
+                .andExpect(jsonPath("$.pago.idPagoAnticipo").value(idPago));
+        assertThat(jdbcTemplate.queryForObject(
+                "SELECT count(*) FROM movimiento_caja WHERE referencia_externa = 'pi_cu14web' AND medio_pago = 'TARJETA'",
+                Integer.class)).isEqualTo(1);
         mockMvc.perform(conToken(get("/api/v1/caja/actual"), admin))
-                .andExpect(jsonPath("$.ingresosQr").value(6.00));
-        // Ya pagada: no se genera otro QR.
-        mockMvc.perform(conToken(post(RESERVAS + "/" + cita + "/anticipo/qr"), cliente))
+                .andExpect(jsonPath("$.ingresosTarjeta").value(6.00))
+                .andExpect(jsonPath("$.ingresosQr").value(0));
+
+        // Ya pagada: no se prepara otro cobro.
+        mockMvc.perform(conToken(post(tarjeta), cliente))
                 .andExpect(status().isBadRequest())
                 .andExpect(jsonPath("$.message").value("La reserva ya tiene el anticipo registrado"));
+    }
+
+    @Test
+    @DisplayName("5. Anticipo menor al mínimo de la tarjeta: no llama a Stripe y pide pagarlo en la barbería")
+    void anticipoBajoSePagaEnLaBarberia() throws Exception {
+        String admin = tokenAdmin();
+        int cejas = idServicio("Perfilado de Cejas");
+        int barbero = nuevoBarbero(admin, "barbero5.cu14@houseofcut.bo", cejas);
+        crearUsuario(admin, cliente("cliente5.cu14@houseofcut.bo", PASS));
+        String cliente = token("cliente5.cu14@houseofcut.bo", PASS);
+        int cita = citaWeb(cliente, cejas, barbero, "09:00", "09:15");
+        abrirCaja(admin);
+
+        mockMvc.perform(conToken(post(RESERVAS + "/" + cita + "/anticipo/tarjeta"), cliente))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.message").value(org.hamcrest.Matchers.startsWith(
+                        "El anticipo de Bs 4.00 es menor al mínimo para pagar con tarjeta (Bs 5.00). Páguelo en la barbería antes de las ")))
+                .andExpect(jsonPath("$.campos." + PagoAnticipoWebService.CAMPO_PAGO_EN_BARBERIA).exists());
+        verify(stripe, never()).crearPaymentIntent(anyLong(), anyString(), anyString(), anyMap());
     }
 
     @Test
@@ -193,7 +253,7 @@ class PagoAnticipoControllerIT extends CitasBaseTest {
         mockMvc.perform(conToken(post(RESERVAS + "/" + cita + "/anticipo"), token("cliente4.cu14@houseofcut.bo", PASS))
                         .content(json(cobro("EFECTIVO", 6.00, null))))
                 .andExpect(status().isForbidden());
-        mockMvc.perform(conToken(post(RESERVAS + "/" + cita + "/anticipo/qr"), token("recep4.cu14@houseofcut.bo", PASS)))
+        mockMvc.perform(conToken(post(RESERVAS + "/" + cita + "/anticipo/tarjeta"), token("recep4.cu14@houseofcut.bo", PASS)))
                 .andExpect(status().isForbidden());
     }
 }

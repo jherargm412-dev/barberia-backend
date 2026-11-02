@@ -62,8 +62,8 @@ public class SecurityConfig {
                         // CU12 + CU14 sin cuenta: barberos, horas libres, solicitar la cita y, con el código de su enlace, verla y pagar.
                         .requestMatchers(HttpMethod.GET, "/api/v1/publico/servicios/*/barberos", "/api/v1/publico/disponibilidad",
                                 "/api/v1/publico/citas/*").permitAll()
-                        .requestMatchers(HttpMethod.POST, "/api/v1/publico/citas", "/api/v1/publico/citas/*/anticipo/qr",
-                                "/api/v1/publico/citas/*/anticipo/confirmar-qr").permitAll()
+                        .requestMatchers(HttpMethod.POST, "/api/v1/publico/citas", "/api/v1/publico/citas/*/anticipo/tarjeta",
+                                "/api/v1/publico/citas/*/anticipo/tarjeta/*/confirmacion").permitAll()
                         .requestMatchers(HttpMethod.OPTIONS, "/**").permitAll()
                         .anyRequest().authenticated())
                 .addFilterBefore(filtroJwt, UsernamePasswordAuthenticationFilter.class);

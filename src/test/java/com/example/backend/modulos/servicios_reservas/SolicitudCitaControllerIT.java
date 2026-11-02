@@ -191,7 +191,7 @@ class SolicitudCitaControllerIT extends CitasBaseTest {
         assertThat(b.getDetalle()).contains("#" + vencida);
 
         // Ya cancelada, no se puede pagar.
-        mockMvc.perform(conToken(post("/api/v1/reservas/" + vencida + "/anticipo/qr"), cliente))
+        mockMvc.perform(conToken(post("/api/v1/reservas/" + vencida + "/anticipo/tarjeta"), cliente))
                 .andExpect(status().isBadRequest());
     }
 }

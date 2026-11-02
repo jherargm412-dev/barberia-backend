@@ -17,7 +17,8 @@ public class PagoAnticipoMapper {
 
     public PagoAnticipoResponse aResponse(PagoAnticipo p) {
         return new PagoAnticipoResponse(p.getIdPagoAnticipo(), p.getMetodo(), p.getMontoEfectivo(),
-                p.getMontoQr(), p.getMontoTotal(), p.getReferenciaQr(), p.getFechaPago(),
+                p.getMontoQr(), p.getMontoTarjeta(), p.getMontoTotal(), p.getReferenciaQr(),
+                p.getReferenciaTarjeta(), p.getFechaPago(),
                 p.getCaja().getIdCaja(), p.getUsuario().getNombre(),
                 reservaMapper.aResponse(p.getReserva()));
     }

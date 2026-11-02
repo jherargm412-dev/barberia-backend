@@ -11,6 +11,9 @@ public interface PagoAnticipoRepository extends JpaRepository<PagoAnticipo, Inte
     
     /** El anticipo de una reserva, si ya se pagó. Sirve para no cobrar dos veces y para el comprobante. */
     Optional<PagoAnticipo> findByReserva_IdReserva(Integer idReserva);
+
+    /** El pago registrado con ese cobro de Stripe (pi_...), si ya existe. */
+    Optional<PagoAnticipo> findByReferenciaTarjeta(String referenciaTarjeta);
     
      /** ¿Esta referencia de QR ya se usó en otro pago? */
     boolean existsByReferenciaQr(String referenciaQr);

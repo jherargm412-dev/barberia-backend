@@ -123,8 +123,8 @@ class ReservaInvitadoControllerIT extends CitasBaseTest {
     }
 
     @Test
-    @DisplayName("4. El QR no dura más que el plazo para pagar la cita; con el plazo vencido no se genera")
-    void qrDentroDelPlazo() throws Exception {
+    @DisplayName("4. El cobro con tarjeta informa el plazo para pagar la cita; con el plazo vencido no se prepara")
+    void tarjetaDentroDelPlazo() throws Exception {
         String admin = tokenAdmin();
         int corte = idServicio("Corte Clásico");
         int barbero = nuevoBarbero(admin, "barbero4.inv@houseofcut.bo", corte);
@@ -132,26 +132,27 @@ class ReservaInvitadoControllerIT extends CitasBaseTest {
         JsonNode r = solicitar(pedido("Dora", "70044556", corte, barbero, "10:00", "10:30"));
         String codigo = r.get("codigo").asString();
 
-        // Faltan 5 minutos para el plazo: el QR vence con el plazo, no a los 15 minutos.
+        // Faltan 5 minutos para el plazo: el cobro se prepara e informa ese mismo plazo.
         jdbcTemplate.update("UPDATE reserva SET fecha_registro = fecha_registro - INTERVAL '25 minutes' WHERE codigo_acceso = ?",
                 codigo);
         entityManager.clear(); // el UPDATE por SQL no se ve en las entidades ya cargadas en esta transacción
         String pagarAntesDe = leer(mockMvc.perform(get(URL + "/" + codigo)).andReturn()).get("pagarAntesDe").asString();
-        String venceEn = leer(publico(URL + "/" + codigo + "/anticipo/qr", null)
-                .andExpect(status().isOk()).andReturn()).get("venceEn").asString();
-        assertThat(venceEn).startsWith(pagarAntesDe); // mismo minuto que el plazo, no 15 minutos después
+        simularStripe("pi_invplazo");
+        String plazoDelCobro = leer(publico(URL + "/" + codigo + "/anticipo/tarjeta", null)
+                .andExpect(status().isOk()).andReturn()).get("pagarAntesDe").asString();
+        assertThat(plazoDelCobro).startsWith(pagarAntesDe); // mismo plazo que la cita (la cita lo muestra sin segundos)
 
         // Plazo vencido (aunque la tarea todavía no la canceló): ya no se puede pagar.
         jdbcTemplate.update("UPDATE reserva SET fecha_registro = fecha_registro - INTERVAL '10 minutes' WHERE codigo_acceso = ?",
                 codigo);
         entityManager.clear(); // el UPDATE por SQL no se ve en las entidades ya cargadas en esta transacción
-        publico(URL + "/" + codigo + "/anticipo/qr", null)
+        publico(URL + "/" + codigo + "/anticipo/tarjeta", null)
                 .andExpect(status().isBadRequest())
                 .andExpect(jsonPath("$.message").value(PagoAnticipoWebService.MSG_PLAZO_VENCIDO));
     }
 
     @Test
-    @DisplayName("3. Con el código: ver la cita y pagar el QR (CONFIRMADA, ingreso en caja); código inventado: 404")
+    @DisplayName("3. Con el código: ver la cita y pagar con tarjeta (CONFIRMADA, ingreso en caja); código inventado: 404")
     void pagarConElEnlace() throws Exception {
         String admin = tokenAdmin();
         int corte = idServicio("Corte Clásico");
@@ -163,25 +164,29 @@ class ReservaInvitadoControllerIT extends CitasBaseTest {
                 .andExpect(jsonPath("$.cliente.nombre").value("C."))
                 .andExpect(jsonPath("$.anticipoPagado").value(false));
         mockMvc.perform(get(URL + "/no-existe")).andExpect(status().isNotFound());
-        publico(URL + "/no-existe/anticipo/qr", null).andExpect(status().isNotFound());
+        publico(URL + "/no-existe/anticipo/tarjeta", null).andExpect(status().isNotFound());
 
         // Sin caja abierta no hay pago en línea.
-        publico(URL + "/" + codigo + "/anticipo/qr", null)
+        publico(URL + "/" + codigo + "/anticipo/tarjeta", null)
                 .andExpect(status().isBadRequest())
                 .andExpect(jsonPath("$.message").value("El pago en línea no está disponible en este momento. Intente más tarde"));
         abrirCaja(admin);
 
-        String referencia = leer(publico(URL + "/" + codigo + "/anticipo/qr", null)
+        CobroSimulado cobro = simularStripe("pi_invitado");
+        publico(URL + "/" + codigo + "/anticipo/tarjeta", null)
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.monto").value(6.00))
-                .andReturn()).get("referencia").asString();
-        publico(URL + "/" + codigo + "/anticipo/confirmar-qr", Map.of("referencia", referencia))
+                .andExpect(jsonPath("$.paymentIntentId").value("pi_invitado"));
+        cobro.pagar();
+        publico(URL + "/" + codigo + "/anticipo/tarjeta/pi_invitado/confirmacion", null)
                 .andExpect(status().isCreated())
+                .andExpect(jsonPath("$.pago.metodo").value("TARJETA"))
                 .andExpect(jsonPath("$.pago.reserva.estado").value("CONFIRMADA"))
+                .andExpect(jsonPath("$.pago.reserva.cliente.nombre").value("C."))
                 .andExpect(jsonPath("$.pago.registradoPor").value("Reservas en línea"));
 
         mockMvc.perform(get(URL + "/" + codigo)).andExpect(jsonPath("$.estado").value("CONFIRMADA"));
         mockMvc.perform(get("/api/v1/caja/actual").header("Authorization", bearer(admin)))
-                .andExpect(jsonPath("$.ingresosQr").value(6.00));
+                .andExpect(jsonPath("$.ingresosTarjeta").value(6.00));
     }
 }

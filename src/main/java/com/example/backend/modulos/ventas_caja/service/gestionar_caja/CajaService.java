@@ -196,21 +196,22 @@ public class CajaService {
                 "ABIERTA".equals(caja.getEstado()) ? t.saldoEsperado() : caja.getSaldoEsperado(),
                 caja.getEfectivoContado(), caja.getDiferencia(), caja.getObservacionCierre(),
                 caja.getUsuarioApertura().getNombre(),
-                caja.getUsuarioCierre() == null ? null : caja.getUsuarioCierre().getNombre());
+                caja.getUsuarioCierre() == null ? null : caja.getUsuarioCierre().getNombre(), t.ingresosTarjeta());
     }
 
-    private record Totales(BigDecimal ingresosEfectivo, BigDecimal ingresosQr,
+    private record Totales(BigDecimal ingresosEfectivo, BigDecimal ingresosQr, BigDecimal ingresosTarjeta,
                            BigDecimal egresosEfectivo, BigDecimal saldoEsperado) {}
 
     private Totales totales(Caja caja) {
-        BigDecimal efectivo = CERO, qr = CERO, egresos = CERO;
+        BigDecimal efectivo = CERO, qr = CERO, tarjeta = CERO, egresos = CERO;
         for (MovimientoCaja m : movimientos.findByCaja_IdCajaOrderByFechaDescIdMovimientoCajaDesc(caja.getIdCaja())) {
             if ("INGRESO".equals(m.getTipo())) {
                 if ("QR".equals(m.getMedioPago())) qr = qr.add(m.getMonto());
+                else if ("TARJETA".equals(m.getMedioPago())) tarjeta = tarjeta.add(m.getMonto());
                 else efectivo = efectivo.add(m.getMonto());
             } else if ("EFECTIVO".equals(m.getMedioPago())) egresos = egresos.add(m.getMonto());
         }
-        return new Totales(efectivo, qr, egresos, caja.getMontoInicial().add(efectivo).subtract(egresos));
+        return new Totales(efectivo, qr, tarjeta, egresos, caja.getMontoInicial().add(efectivo).subtract(egresos));
     }
 
     private static BigDecimal dinero(BigDecimal valor, boolean aceptaCero, String mensaje, String campo) {
