@@ -1,5 +1,6 @@
 package com.example.backend.modulos.gestion_empleados.service.liquidar_comisiones;
 
+import com.example.backend.exception.RecursoNoEncontradoException;
 import com.example.backend.exception.ValidacionNegocioException;
 import com.example.backend.modulos.gestion_empleados.dto.liquidar_comisiones.LiquidacionRequest;
 import com.example.backend.modulos.gestion_empleados.dto.liquidar_comisiones.LiquidacionResponse;
@@ -30,9 +31,15 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 
+/**
+ * CU18 Registrar liquidación de comisiones. Usa los importes congelados al vender (CU20): precio y porcentaje
+ * en cada servicio, y vendedor y comisión unitaria en cada producto. Solo entran ventas PAGADAS aún no liquidadas.
+ */
 @Service
 @RequiredArgsConstructor
 public class LiquidacionService {
+
+    private static final BigDecimal CIEN = new BigDecimal("100");
 
     private final EmpleadoRepository empleadoRepository;
     private final UsuarioRepository usuarioRepository;
@@ -45,26 +52,78 @@ public class LiquidacionService {
 
     @Transactional(readOnly = true)
     public LiquidacionResponse calcular(Integer empleadoId, LiquidacionRequest request) {
-        Empleado empleado = empleadoRepository.findById(empleadoId)
-                .orElseThrow(() -> new ValidacionNegocioException("Empleado no encontrado", Map.of()));
+        Empleado empleado = buscarEmpleado(empleadoId);
+        return armarRespuesta(empleado, pendientes(empleadoId, request));
+    }
 
+    @Transactional
+    public void registrarPago(Integer empleadoId, LiquidacionRequest request, Integer cajaId, UsuarioAutenticado actor) {
+        Empleado empleado = buscarEmpleado(empleadoId);
+        Pendientes pendientes = pendientes(empleadoId, request);
+        LiquidacionResponse calculo = armarRespuesta(empleado, pendientes);
+
+        if (calculo.getTotalPagar().compareTo(BigDecimal.ZERO) <= 0) {
+            throw new ValidacionNegocioException("No hay comisiones pendientes por liquidar");
+        }
+
+        PagoEmpleado pago = pagoRepository.save(PagoEmpleado.builder()
+                .empleado(empleado)
+                .fecha(LocalDateTime.now())
+                .montoTotal(calculo.getTotalPagar())
+                .build());
+
+        for (DetalleServicio ds : pendientes.servicios()) {
+            detallePagoRepository.save(DetallePagoEmpleado.builder()
+                    .pago(pago).detalleServicio(ds).montoComision(comision(ds)).build());
+        }
+        for (DetalleNotaVenta dnv : pendientes.productos()) {
+            detallePagoRepository.save(DetallePagoEmpleado.builder()
+                    .pago(pago).detalleNotaVenta(dnv).montoComision(comision(dnv)).build());
+        }
+
+        // El egreso sale de la caja abierta; si la caja no está abierta, CajaService lanza y todo se revierte.
+        cajaService.registrarEgreso(cajaId, new RegistrarEgresoRequest(
+                "Liquidación de comisiones a " + empleado.getUsuario().getNombre(),
+                calculo.getTotalPagar(),
+                "Pago de comisiones por período " + request.getFechaInicio() + " al " + request.getFechaFin()
+        ), actor);
+
+        bitacora.registrar(usuarioRepository.findById(actor.idUsuario()).orElseThrow(),
+                "PAGO_EMPLEADO_GENERAR", "pago_empleado",
+                "Se pagó Bs. " + calculo.getTotalPagar() + " a " + empleado.getUsuario().getNombre(),
+                null, null);
+    }
+
+    private record Pendientes(List<DetalleServicio> servicios, List<DetalleNotaVenta> productos) {}
+
+    private Empleado buscarEmpleado(Integer empleadoId) {
+        return empleadoRepository.findById(empleadoId)
+                .orElseThrow(() -> new RecursoNoEncontradoException("Empleado no encontrado"));
+    }
+
+    private Pendientes pendientes(Integer empleadoId, LiquidacionRequest request) {
+        if (request == null || request.getFechaInicio() == null || request.getFechaFin() == null) {
+            throw new ValidacionNegocioException("Seleccione el rango de fechas",
+                    Map.of("fechaInicio", "obligatorio", "fechaFin", "obligatorio"));
+        }
+        if (request.getFechaInicio().isAfter(request.getFechaFin())) {
+            throw new ValidacionNegocioException("La fecha de inicio no puede ser posterior a la fecha de fin",
+                    Map.of("fechaInicio", "debe ser anterior o igual a la fecha de fin"));
+        }
         LocalDateTime inicio = request.getFechaInicio().atStartOfDay();
         LocalDateTime fin = request.getFechaFin().atTime(LocalTime.MAX);
+        return new Pendientes(
+                detalleServicioRepository.buscarServiciosNoLiquidados(empleadoId, inicio, fin),
+                detalleNotaVentaRepository.buscarProductosNoLiquidados(empleadoId, inicio, fin));
+    }
 
-        List<DetalleServicio> servicios = detalleServicioRepository.buscarServiciosNoLiquidados(empleadoId, inicio, fin);
-        List<DetalleNotaVenta> productos = detalleNotaVentaRepository.buscarProductosNoLiquidados(empleadoId, inicio, fin);
-
+    private LiquidacionResponse armarRespuesta(Empleado empleado, Pendientes pendientes) {
         BigDecimal totalServicios = BigDecimal.ZERO;
         BigDecimal totalProductos = BigDecimal.ZERO;
         List<LiquidacionResponse.ItemDesglose> desglose = new ArrayList<>();
 
-        // Calcular Servicios
-        for (DetalleServicio ds : servicios) {
-            // El precio y porcentaje ya están congelados en el DetalleServicio
-            BigDecimal comision = ds.getPrecioUnitario()
-                    .multiply(ds.getPorcentajeComision())
-                    .divide(new BigDecimal("100"), 2, RoundingMode.HALF_UP);
-            
+        for (DetalleServicio ds : pendientes.servicios()) {
+            BigDecimal comision = comision(ds);
             totalServicios = totalServicios.add(comision);
             desglose.add(LiquidacionResponse.ItemDesglose.builder()
                     .tipo("SERVICIO")
@@ -72,13 +131,8 @@ public class LiquidacionService {
                     .monto(comision)
                     .build());
         }
-
-        // Calcular Productos
-        for (DetalleNotaVenta dnv : productos) {
-            // Usamos la comisión unitaria del producto * cantidad vendida
-            BigDecimal comision = dnv.getComisionUnitaria()
-                    .multiply(new BigDecimal(dnv.getCantidad()));
-            
+        for (DetalleNotaVenta dnv : pendientes.productos()) {
+            BigDecimal comision = comision(dnv);
             totalProductos = totalProductos.add(comision);
             desglose.add(LiquidacionResponse.ItemDesglose.builder()
                     .tipo("PRODUCTO")
@@ -96,56 +150,15 @@ public class LiquidacionService {
                 .build();
     }
 
-    @Transactional
-    public void registrarPago(Integer empleadoId, LiquidacionRequest request, Integer cajaId, UsuarioAutenticado actor) {
-        LiquidacionResponse calculo = calcular(empleadoId, request);
+    // Servicio: precio congelado × porcentaje congelado, redondeado a 2 decimales
+    private BigDecimal comision(DetalleServicio ds) {
+        return ds.getPrecioUnitario()
+                .multiply(ds.getPorcentajeComision())
+                .divide(CIEN, 2, RoundingMode.HALF_UP);
+    }
 
-        if (calculo.getTotalPagar().compareTo(BigDecimal.ZERO) <= 0) {
-            throw new ValidacionNegocioException("No hay comisiones pendientes por liquidar", Map.of());
-        }
-
-        Empleado empleado = empleadoRepository.findById(empleadoId).get();
-
-        // 1. Guardar Pago Empleado
-        PagoEmpleado pago = PagoEmpleado.builder()
-                .empleado(empleado)
-                .fecha(LocalDateTime.now())
-                .montoTotal(calculo.getTotalPagar())
-                .build();
-        pagoRepository.save(pago);
-
-        // 2. Guardar Detalles (Servicios)
-        LocalDateTime inicio = request.getFechaInicio().atStartOfDay();
-        LocalDateTime fin = request.getFechaFin().atTime(LocalTime.MAX);
-        
-        List<DetalleServicio> servicios = detalleServicioRepository.buscarServiciosNoLiquidados(empleadoId, inicio, fin);
-        for (DetalleServicio ds : servicios) {
-            BigDecimal comision = ds.getPrecioUnitario().multiply(ds.getPorcentajeComision()).divide(new BigDecimal("100"), 2, RoundingMode.HALF_UP);
-            detallePagoRepository.save(DetallePagoEmpleado.builder()
-                    .pago(pago).detalleServicio(ds).montoComision(comision).build());
-        }
-
-        // 3. Guardar Detalles (Productos)
-        List<DetalleNotaVenta> productos = detalleNotaVentaRepository.buscarProductosNoLiquidados(empleadoId, inicio, fin);
-        for (DetalleNotaVenta dnv : productos) {
-            BigDecimal comision = dnv.getComisionUnitaria().multiply(new BigDecimal(dnv.getCantidad()));
-            detallePagoRepository.save(DetallePagoEmpleado.builder()
-                    .pago(pago).detalleNotaVenta(dnv).montoComision(comision).build());
-        }
-
-        // 4. Registrar Egreso en Caja (Reutilizando tu CajaService)
-        RegistrarEgresoRequest egresoReq = new RegistrarEgresoRequest(
-        "Liquidación de comisiones a " + empleado.getUsuario().getNombre(),
-        calculo.getTotalPagar(),
-         "Pago de comisiones por período " + request.getFechaInicio() + " al " + request.getFechaFin()
-);
-        
-        cajaService.registrarEgreso(cajaId, egresoReq, actor);
-
-        // 5. Bitácora
-        bitacora.registrar(usuarioRepository.findById(actor.idUsuario()).get(), 
-                "PAGO_EMPLEADO_GENERAR", "pago_empleado", 
-                "Se pagó Bs. " + calculo.getTotalPagar() + " a " + empleado.getUsuario().getNombre(), 
-                null, null);
+    // Producto: comisión unitaria congelada × cantidad vendida
+    private BigDecimal comision(DetalleNotaVenta dnv) {
+        return dnv.getComisionUnitaria().multiply(BigDecimal.valueOf(dnv.getCantidad()));
     }
 }

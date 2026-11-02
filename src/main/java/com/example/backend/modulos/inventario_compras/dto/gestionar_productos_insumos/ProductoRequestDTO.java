@@ -3,8 +3,9 @@ package com.example.backend.modulos.inventario_compras.dto.gestionar_productos_i
 import java.math.BigDecimal;
 
 // Datos del formulario para registrar o modificar (CU22 paso 4).
-// No incluye stockActual ni activo: al registrar el stock empieza en 0 y el estado en activo (paso 7);
-// el estado solo cambia por PATCH /estado y el stock por compras y ventas.
+// No incluye stockActual ni activo: el estado empieza en activo (paso 7) y solo cambia por PATCH /estado.
+// stockInicial (opcional, 0 si no se envía) solo se usa al registrar: lo que ya hay en la vitrina.
+// Después el stock cambia por compras, ventas y ajustes; al modificar se ignora.
 // tipo: 'VENTA' (producto) o 'INSUMO'. precioVenta es opcional para INSUMO (se guarda 0).
 public record ProductoRequestDTO(
     String tipo,
@@ -13,5 +14,6 @@ public record ProductoRequestDTO(
     BigDecimal costo,
     BigDecimal precioVenta,
     Integer stockMinimo,
-    BigDecimal comisionUnitaria
+    BigDecimal comisionUnitaria,
+    Integer stockInicial
 ) {}

@@ -3,15 +3,23 @@ package com.example.backend.modulos.servicios_reservas;
 import com.example.backend.modulos.seguridad_usuarios.IntegracionBaseTest;
 import com.example.backend.modulos.servicios_reservas.entity.DiaSemana;
 import com.example.backend.modulos.servicios_reservas.repository.ServicioRepository;
+import com.example.backend.modulos.ventas_caja.service.gestionar_pasarela_pago.StripeCliente;
+import com.example.backend.modulos.ventas_caja.service.gestionar_pasarela_pago.StripeCliente.PaymentIntent;
+import org.junit.jupiter.api.BeforeEach;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.MediaType;
 import org.springframework.jdbc.core.JdbcTemplate;
+import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MvcResult;
 import org.springframework.test.web.servlet.request.MockHttpServletRequestBuilder;
 
 import java.time.LocalDate;
 import java.util.*;
 
+import static org.mockito.ArgumentMatchers.anyLong;
+import static org.mockito.ArgumentMatchers.anyMap;
+import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
@@ -24,6 +32,42 @@ abstract class CitasBaseTest extends IntegracionBaseTest {
 
     @Autowired
     protected JdbcTemplate jdbcTemplate;
+
+    /** Stripe simulado: las pruebas no llaman a la API real (CU14 pago web con tarjeta). */
+    @MockitoBean
+    protected StripeCliente stripe;
+
+    @BeforeEach
+    void stripeConfigurado() {
+        when(stripe.configurado()).thenReturn(true);
+        when(stripe.clavePublica()).thenReturn("pk_test_citas");
+    }
+
+    /** Un cobro en el Stripe simulado: guarda el monto y la metadata que mandó el backend al crearlo. */
+    protected static final class CobroSimulado {
+        long monto;
+        String estado = "requires_payment_method";
+        Map<String, String> metadata = Map.of();
+
+        /** El cliente completó el pago en Stripe.js. */
+        void pagar() {
+            estado = "succeeded";
+        }
+    }
+
+    /** El próximo cobro que cree el backend tendrá este id; consultarlo devuelve su estado actual. */
+    @SuppressWarnings("unchecked")
+    protected CobroSimulado simularStripe(String id) {
+        CobroSimulado cobro = new CobroSimulado();
+        when(stripe.crearPaymentIntent(anyLong(), anyString(), anyString(), anyMap())).thenAnswer(inv -> {
+            cobro.monto = inv.getArgument(0);
+            cobro.metadata = inv.getArgument(3, Map.class);
+            return new PaymentIntent(id, cobro.estado, cobro.monto, "bob", id + "_secret", cobro.metadata);
+        });
+        when(stripe.consultarPaymentIntent(id))
+                .thenAnswer(inv -> new PaymentIntent(id, cobro.estado, cobro.monto, "bob", null, cobro.metadata));
+        return cobro;
+    }
 
     protected MockHttpServletRequestBuilder conToken(MockHttpServletRequestBuilder req, String token) {
         return req.header("Authorization", bearer(token)).contentType(MediaType.APPLICATION_JSON);

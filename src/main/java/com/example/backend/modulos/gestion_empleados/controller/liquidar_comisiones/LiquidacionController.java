@@ -11,7 +11,7 @@ import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
 
 @RestController
-@RequestMapping("/api/liquidaciones")
+@RequestMapping("/api/v1/liquidaciones")
 @RequiredArgsConstructor
 @PreAuthorize("hasAuthority('PAGO_EMPLEADO_GENERAR')")
 public class LiquidacionController {

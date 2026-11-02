@@ -9,7 +9,7 @@ import lombok.NoArgsConstructor;
 import lombok.Setter;
 
 // Registro de un ajuste manual de stock (tabla ajuste_stock, migración V19).
-// tipo: 'INVENTARIO_INICIAL' (suma), 'PERDIDA' o 'VENCIDO' (restan).
+// tipo: 'INVENTARIO_INICIAL' (al registrar el ítem) y 'SOBRANTE' (suman); 'FALTANTE', 'PERDIDA' o 'VENCIDO' (restan).
 @Getter
 @Setter
 @NoArgsConstructor

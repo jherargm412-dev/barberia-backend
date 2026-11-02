@@ -3,8 +3,7 @@ package com.example.backend.modulos.servicios_reservas.controller.solicitar_cita
 import com.example.backend.modulos.servicios_reservas.dto.consultar_disponibilidad.DisponibilidadResponse;
 import com.example.backend.modulos.servicios_reservas.dto.gestionar_citas.BarberoDisponible;
 import com.example.backend.modulos.servicios_reservas.dto.gestionar_citas.ReservaResponse;
-import com.example.backend.modulos.servicios_reservas.dto.registrar_pago_anticipo.ConfirmarPagoQrRequest;
-import com.example.backend.modulos.servicios_reservas.dto.registrar_pago_anticipo.QrAnticipoResponse;
+import com.example.backend.modulos.servicios_reservas.dto.registrar_pago_anticipo.AnticipoTarjetaResponse;
 import com.example.backend.modulos.servicios_reservas.dto.registrar_pago_anticipo.RespuestaPagoAnticipo;
 import com.example.backend.modulos.servicios_reservas.dto.solicitar_cita.RespuestaCitaInvitado;
 import com.example.backend.modulos.servicios_reservas.dto.solicitar_cita.SolicitarCitaInvitadoRequest;
@@ -63,18 +62,17 @@ public class ReservaInvitadoController {
         return reservaInvitadoService.consultar(codigo);
     }
 
-    /** CU14 flujo A: QR para pagar el anticipo. */
-    @PostMapping("/citas/{codigo}/anticipo/qr")
-    public QrAnticipoResponse generarQr(@PathVariable String codigo) {
-        return pagoAnticipoWebService.generarQrInvitado(codigo);
+    /** CU14 flujo A: prepara el pago con tarjeta (Stripe) del anticipo. */
+    @PostMapping("/citas/{codigo}/anticipo/tarjeta")
+    public AnticipoTarjetaResponse iniciarTarjeta(@PathVariable String codigo) {
+        return pagoAnticipoWebService.iniciarTarjetaInvitado(codigo);
     }
 
-    /** CU14 flujo A: el invitado confirma que pagó; se verifica el QR y la cita queda CONFIRMADA. */
-    @PostMapping("/citas/{codigo}/anticipo/confirmar-qr")
+    /** CU14 flujo A: tras cobrar con Stripe.js se verifica el cobro y la cita queda CONFIRMADA. */
+    @PostMapping("/citas/{codigo}/anticipo/tarjeta/{paymentIntentId}/confirmacion")
     @ResponseStatus(HttpStatus.CREATED)
-    public RespuestaPagoAnticipo confirmarQr(@PathVariable String codigo,
-                                             @RequestBody(required = false) ConfirmarPagoQrRequest peticion) {
+    public RespuestaPagoAnticipo confirmarTarjeta(@PathVariable String codigo, @PathVariable String paymentIntentId) {
         return new RespuestaPagoAnticipo(RespuestaPagoAnticipo.REGISTRADO,
-                pagoAnticipoWebService.confirmarQrInvitado(codigo, peticion));
+                pagoAnticipoWebService.confirmarTarjetaInvitado(codigo, paymentIntentId));
     }
 }
