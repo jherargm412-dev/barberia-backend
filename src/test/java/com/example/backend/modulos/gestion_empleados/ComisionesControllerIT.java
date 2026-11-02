@@ -156,17 +156,17 @@ class ComisionesControllerIT extends IntegracionBaseTest {
         servicio(venta, empleadoB, "REALIZADO");
         producto(venta, empleadoA);
         String periodo = json(Map.of("fechaInicio", DIA, "fechaFin", DIA));
-        mockMvc.perform(post("/api/liquidaciones/calcular/" + empleadoB).header("Authorization", bearer(adminToken))
+        mockMvc.perform(post("/api/v1/liquidaciones/calcular/" + empleadoB).header("Authorization", bearer(adminToken))
                         .contentType("application/json").content(periodo))
                 .andExpect(status().isOk()).andExpect(jsonPath("$.totalProductos").value(0));
-        mockMvc.perform(post("/api/liquidaciones/pagar/" + empleadoA + "/caja/" + caja).header("Authorization", bearer(adminToken))
+        mockMvc.perform(post("/api/v1/liquidaciones/pagar/" + empleadoA + "/caja/" + caja).header("Authorization", bearer(adminToken))
                         .contentType("application/json").content(periodo)).andExpect(status().isOk());
         mockMvc.perform(get(URL).with(barberoA()).param("fechaInicio", DIA.toString()).param("fechaFin", DIA.toString()))
                 .andExpect(status().isOk()).andExpect(jsonPath("$.periodo.liquidada").value(17.08))
                 .andExpect(jsonPath("$.periodo.pendiente").value(0));
-        mockMvc.perform(post("/api/liquidaciones/pagar/" + empleadoA + "/caja/" + caja).header("Authorization", bearer(adminToken))
+        mockMvc.perform(post("/api/v1/liquidaciones/pagar/" + empleadoA + "/caja/" + caja).header("Authorization", bearer(adminToken))
                         .contentType("application/json").content(periodo)).andExpect(status().isBadRequest());
-        mockMvc.perform(post("/api/liquidaciones/pagar/" + empleadoB + "/caja/" + caja).with(barberoA())
+        mockMvc.perform(post("/api/v1/liquidaciones/pagar/" + empleadoB + "/caja/" + caja).with(barberoA())
                         .contentType("application/json").content(periodo)).andExpect(status().isForbidden());
         assertThat(jdbc.queryForObject("select count(*) from detalle_pago_empleado", Integer.class)).isEqualTo(2);
         assertThat(jdbc.queryForObject("select count(*) from movimiento_caja where tipo='EGRESO'", Integer.class)).isEqualTo(1);
