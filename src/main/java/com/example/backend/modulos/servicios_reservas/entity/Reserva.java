@@ -4,11 +4,13 @@ import com.example.backend.modulos.seguridad_usuarios.entity.Cliente;
 import com.example.backend.modulos.seguridad_usuarios.entity.Empleado;
 import jakarta.persistence.*;
 import lombok.Getter;
+import org.hibernate.annotations.Formula;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
 
 import java.math.BigDecimal;
 import java.time.LocalDate;
+import java.time.LocalDateTime;
 import java.time.LocalTime;
 import java.util.List;
 
@@ -77,6 +79,29 @@ public class Reserva {
     /** PENDIENTE, CONFIRMADA, ATENDIDA, CANCELADA o NO_ASISTIO (CHECK de la tabla). */
     @Column(name = "estado", nullable = false, length = 20)
     private String estado = PENDIENTE;
+
+    /**
+     * ¿Ya se cobró su anticipo (CU14)? Se calcula al leer la cita (subconsulta a pago_anticipo), así las
+     * listas no hacen una consulta extra por cita. Solo lectura: lo escribe CU14 al guardar el pago.
+     */
+    @Formula("(select count(*) > 0 from pago_anticipo p where p.reserva_id = id_reserva)")
+    private boolean anticipoPagado;
+
+    /** Cuándo se registró la cita (hora de Bolivia). Sirve para vencer las citas web sin pagar (CU12). */
+    @Column(name = "fecha_registro", nullable = false, updatable = false)
+    private LocalDateTime fechaRegistro;
+
+    /** Solo en citas web de invitados (sin cuenta): código secreto de su enlace para ver la cita y pagar. */
+    @Column(name = "codigo_acceso", length = 36, unique = true)
+    private String codigoAcceso;
+
+    /** Por si alguna escritura no lo fijó: la hora de registro nunca queda vacía. */
+    @PrePersist
+    void alRegistrar() {
+        if (fechaRegistro == null) {
+            fechaRegistro = LocalDateTime.now(java.time.ZoneId.of("America/La_Paz"));
+        }
+    }
 
     /** ATENDIDA, CANCELADA y NO_ASISTIO son finales: la cita ya no se reprograma ni cambia de estado. */
     public boolean estaFinalizada() {

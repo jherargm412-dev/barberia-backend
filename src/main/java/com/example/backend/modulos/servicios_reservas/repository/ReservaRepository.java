@@ -10,6 +10,7 @@ import org.springframework.data.jpa.repository.*;
 import org.springframework.data.repository.query.Param;
 
 import java.time.LocalDate;
+import java.time.LocalDateTime;
 import java.time.LocalTime;
 import java.util.Collection;
 import java.util.List;
@@ -24,6 +25,10 @@ public interface ReservaRepository extends JpaRepository<Reserva, Integer>, JpaS
 
     @EntityGraph(attributePaths = {"cliente", "servicio", "empleado", "empleado.usuario"})
     Optional<Reserva> findWithDetalleByIdReserva(Integer idReserva);
+
+    /** CU12 invitado: la cita por el código secreto de su enlace. */
+    @EntityGraph(attributePaths = {"cliente", "servicio", "empleado", "empleado.usuario"})
+    Optional<Reserva> findByCodigoAcceso(String codigoAcceso);
 
     /**
      * ¿El barbero ya tiene otra cita que se cruza con [inicio, fin) ese día? Dos citas se cruzan si una
@@ -80,6 +85,21 @@ public interface ReservaRepository extends JpaRepository<Reserva, Integer>, JpaS
             """)
     List<Empleado> barberosHabilitados(@Param("servicioId") Integer servicioId, @Param("rol") String rol);
 
+    /**
+     * CU13 paso 3: servicios que se pueden reservar, es decir, que presta (habilitado) al menos un barbero activo
+     * con horario semanal asignado (CU09). Reemplaza a servicio_horario del documento original.
+     */
+    @Query("""
+            select distinct es.servicio.idServicio from EmpleadoServicio es
+              join es.empleado e
+              join e.usuario u
+            where es.estado = com.example.backend.modulos.gestion_empleados.entity.EstadoEmpleadoServicio.HABILITADO
+              and u.estado = com.example.backend.modulos.seguridad_usuarios.entity.EstadoUsuario.ACTIVO
+              and exists (select 1 from Usuario u2 join u2.roles r where u2 = u and r.nombre = :rol)
+              and exists (select 1 from HorarioBarbero h where h.empleado = e)
+            """)
+    List<Integer> serviciosReservables(@Param("rol") String rol);
+
     /** Todos los barberos activos (filtro de la agenda), con su turno, ordenados por nombre. */
     @Query("""
             select e from Empleado e
@@ -90,4 +110,35 @@ public interface ReservaRepository extends JpaRepository<Reserva, Integer>, JpaS
             order by u.nombre
             """)
     List<Empleado> barberosActivos(@Param("rol") String rol);
+
+    /**
+     * CU14: bloquea la fila de la reserva mientras se cobra su anticipo. Así dos cobros simultáneos de la misma
+     * cita no chocan contra el UNIQUE de pago_anticipo (500): el segundo espera y ve "ya tiene el anticipo".
+     */
+    @Lock(LockModeType.PESSIMISTIC_WRITE)
+    @Query("select r from Reserva r where r.idReserva = :id")
+    Optional<Reserva> bloquear(@Param("id") Integer idReserva);
+
+    /**
+     * CU12: ids de las citas web PENDIENTE, sin anticipo pagado, registradas antes de {@code limite} (ya vencieron).
+     * Solo los ids: cada una se bloquea y se vuelve a revisar antes de cancelarla, por si justo se pagó.
+     */
+    @Query("""
+            select r.idReserva from Reserva r
+            where r.canal = 'WEB' and r.estado = 'PENDIENTE' and r.fechaRegistro < :limite
+              and not exists (select 1 from PagoAnticipo p where p.reserva = r)
+            """)
+    List<Integer> webSinPagarAntesDe(@Param("limite") LocalDateTime limite);
+
+    /** CU12: cuántas citas web del cliente siguen PENDIENTE sin pagar (para limitar las reservas sin pagar). */
+    @Query("""
+            select count(r) from Reserva r
+            where r.cliente.idCliente = :idCliente and r.canal = 'WEB' and r.estado = 'PENDIENTE'
+              and not exists (select 1 from PagoAnticipo p where p.reserva = r)
+            """)
+    long contarWebSinPagar(@Param("idCliente") Integer idCliente);
+
+    /** CU12 "Mis citas": las citas del cliente, de la más próxima a la más lejana (las pasadas al final). */
+    @EntityGraph(attributePaths = {"cliente", "servicio", "empleado", "empleado.usuario"})
+    List<Reserva> findByCliente_IdClienteOrderByFechaDescHoraInicioDesc(Integer idCliente);
 }

@@ -25,6 +25,8 @@ public class RestAccessDeniedHandler implements AccessDeniedHandler {
     public static final String MENSAJE_BITACORA = "No tiene permiso para consultar la bitácora";
     /** CU09 2a. */
     public static final String MENSAJE_HORARIOS = "No tiene permiso para gestionar horarios";
+    /** CU16 2a. */
+    public static final String MENSAJE_AGENDA = "No tiene permisos para acceder a la agenda";
     /** CU21: texto de acceso denegado para operaciones de caja. */
     public static final String MENSAJE_CAJA = "No tiene permiso para realizar esta operación";
 
@@ -35,6 +37,7 @@ public class RestAccessDeniedHandler implements AccessDeniedHandler {
         MENSAJES_POR_RUTA.put("/api/v1/bitacora", MENSAJE_BITACORA);
         MENSAJES_POR_RUTA.put("/api/v1/horarios", MENSAJE_HORARIOS);
         MENSAJES_POR_RUTA.put("/api/v1/caja", MENSAJE_CAJA);
+        MENSAJES_POR_RUTA.put("/api/v1/agenda", MENSAJE_AGENDA);
     }
 
     private final ObjectMapper objectMapper;

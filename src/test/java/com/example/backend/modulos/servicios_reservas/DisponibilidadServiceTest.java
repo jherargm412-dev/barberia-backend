@@ -134,7 +134,7 @@ class DisponibilidadServiceTest {
     }
 
     @Test
-    @DisplayName("Falso: se solapa con otra reserva PENDIENTE o CONFIRMADA del barbero")
+    @DisplayName("Falso: se solapa con otra reserva PENDIENTE, CONFIRMADA o ATENDIDA del barbero")
     void solapeConOtraReserva() {
         when(reservaConsultas.existeSolape(BARBERO, LUNES, hora("10:00"), hora("10:40"))).thenReturn(true);
 

@@ -1,6 +1,7 @@
 package com.example.backend.modulos.servicios_reservas.controller.solicitar_cita;
 
 import com.example.backend.modulos.servicios_reservas.dto.gestionar_citas.BarberoDisponible;
+import com.example.backend.modulos.servicios_reservas.dto.gestionar_citas.ReservaResponse;
 import com.example.backend.modulos.servicios_reservas.dto.solicitar_cita.RespuestaSolicitudCita;
 import com.example.backend.modulos.servicios_reservas.dto.solicitar_cita.SolicitarCitaRequest;
 import com.example.backend.modulos.servicios_reservas.service.solicitar_cita.SolicitudCitaService;
@@ -29,6 +30,12 @@ public class SolicitudCitaController {
     @GetMapping("/barberos")
     public List<BarberoDisponible> barberos(@RequestParam(required = false) Integer servicioId) {
         return solicitudCitaService.barberosPara(servicioId);
+    }
+
+    /** "Mis citas": las citas del cliente logueado, para pagar después el anticipo (CU14) y ver su estado. */
+    @GetMapping("/mias")
+    public List<ReservaResponse> misCitas(@AuthenticationPrincipal UsuarioAutenticado actor) {
+        return solicitudCitaService.misCitas(actor);
     }
 
     /** Crea la cita PENDIENTE del cliente logueado; luego se paga el anticipo (CU14). */

@@ -35,6 +35,9 @@ services:
       APP_SEED_ADMIN_EMAIL: ${APP_SEED_ADMIN_EMAIL:?Falta APP_SEED_ADMIN_EMAIL en backend/.env}
       APP_SEED_ADMIN_PASSWORD: ${APP_SEED_ADMIN_PASSWORD:?Falta APP_SEED_ADMIN_PASSWORD en backend/.env}
       APP_SEED_ADMIN_NOMBRE: ${APP_SEED_ADMIN_NOMBRE:-Administrador}
+      # Stripe: claves de prueba configuradas en backend/.env (no se versionan).
+      STRIPE_SECRET_KEY: ${STRIPE_SECRET_KEY:-}
+      STRIPE_PUBLISHABLE_KEY: ${STRIPE_PUBLISHABLE_KEY:-}
       # Correo: por defecto se escribe en el log. Para enviar de verdad, como en Railway:
       #   APP_CORREO_PROVEEDOR=brevo docker compose up --build   (usa BREVO_API_KEY y MAIL_FROM de backend/.env)
       MAIL_USERNAME: ""

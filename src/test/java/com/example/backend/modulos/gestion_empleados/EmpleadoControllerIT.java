@@ -14,6 +14,8 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.MediaType;
 import org.springframework.test.web.servlet.MvcResult;
 import org.springframework.test.web.servlet.request.MockHttpServletRequestBuilder;
+import org.springframework.transaction.annotation.Propagation;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.util.HashMap;
 import java.util.List;
@@ -48,7 +50,6 @@ class EmpleadoControllerIT extends IntegracionBaseTest {
         cuerpo.put("correo", correo);
         cuerpo.put("contrasena", "Clave123!");
         cuerpo.put("telefono", "71234567");
-        cuerpo.put("especialidad", "Degradados");
         cuerpo.put("tipoContrato", "COMISIONISTA");
         cuerpo.put("turnoId", 1);
         return cuerpo;
@@ -70,7 +71,10 @@ class EmpleadoControllerIT extends IntegracionBaseTest {
     @DisplayName("1. Registrar barbero: 201, usuario + rol Barbero + empleado, puede iniciar sesión, bitácora")
     void registrarBarbero() throws Exception {
         String admin = tokenAdmin();
-        mockMvc.perform(conToken(post(URL), admin).content(json(nuevoBarbero("Carlos.B@HouseOfCut.bo"))))
+        Map<String, Object> cuerpo = nuevoBarbero("Carlos.B@HouseOfCut.bo");
+        // Especialidades = servicios del catálogo que realiza: quedan HABILITADOS para agendar citas.
+        cuerpo.put("servicios", List.of(idServicio("Perfilado de Barba"), idServicio("Corte Degradado (Fade)")));
+        mockMvc.perform(conToken(post(URL), admin).content(json(cuerpo)))
                 .andExpect(status().isCreated())
                 .andExpect(jsonPath("$.mensaje").value("Empleado registrado correctamente"))
                 .andExpect(jsonPath("$.empleado.correo").value("carlos.b@houseofcut.bo"))
@@ -78,13 +82,16 @@ class EmpleadoControllerIT extends IntegracionBaseTest {
                 .andExpect(jsonPath("$.empleado.tipoContrato").value("COMISIONISTA"))
                 .andExpect(jsonPath("$.empleado.turno.nombre").value("Mañana"))
                 .andExpect(jsonPath("$.empleado.estado").value("ACTIVO"))
-                .andExpect(jsonPath("$.empleado.servicios.length()").value(0))
+                .andExpect(jsonPath("$.empleado.servicios.length()").value(2))
+                .andExpect(jsonPath("$.empleado.especialidad").value("Corte Degradado (Fade), Perfilado de Barba"))
                 .andExpect(jsonPath("$.empleado.contrasena").doesNotExist());
 
         assertThat(loginResultado("carlos.b@houseofcut.bo", "Clave123!").getResponse().getStatus()).isEqualTo(200);
         Bitacora b = bitacoraRepository.findByAccionOrderByIdBitacoraDesc("EMPLEADO_CREAR").getFirst();
         assertThat(b.getTablaAfectada()).isEqualTo("empleado");
-        assertThat(b.getDatosNuevos()).contains("Degradados").doesNotContain("Clave123!");
+        assertThat(b.getDatosNuevos()).contains("carlos.b@houseofcut.bo").doesNotContain("Clave123!");
+        Bitacora servicios = bitacoraRepository.findByAccionOrderByIdBitacoraDesc("EMPLEADO_SERVICIOS_ACTUALIZAR").getFirst();
+        assertThat(servicios.getDetalle()).contains("+Corte Degradado (Fade)", "+Perfilado de Barba");
     }
 
     @Test
@@ -141,7 +148,9 @@ class EmpleadoControllerIT extends IntegracionBaseTest {
     @DisplayName("4. Listar: empleados con datos de usuario y filtros por rol, búsqueda, contrato, estado")
     void listar() throws Exception {
         String admin = tokenAdmin();
-        registrar(admin, nuevoBarbero("lista.cu17@houseofcut.bo"));
+        Map<String, Object> barbero = nuevoBarbero("lista.cu17@houseofcut.bo");
+        barbero.put("servicios", List.of(idServicio("Corte Degradado (Fade)")));
+        registrar(admin, barbero);
         crearUsuario(admin, cliente("cliente.cu17@houseofcut.bo", "Clave123!")); // no es empleado
 
         mockMvc.perform(conToken(get(URL), admin))
@@ -151,9 +160,9 @@ class EmpleadoControllerIT extends IntegracionBaseTest {
         mockMvc.perform(conToken(get(URL).param("rol", "barbero"), admin))
                 .andExpect(jsonPath("$.totalElementos").value(1))
                 .andExpect(jsonPath("$.contenido[0].correo").value("lista.cu17@houseofcut.bo"))
-                .andExpect(jsonPath("$.contenido[0].especialidad").value("Degradados"))
+                .andExpect(jsonPath("$.contenido[0].especialidad").value("Corte Degradado (Fade)"))
                 .andExpect(jsonPath("$.contenido[0].turno").value("Mañana"))
-                .andExpect(jsonPath("$.contenido[0].cantidadServicios").value(0));
+                .andExpect(jsonPath("$.contenido[0].cantidadServicios").value(1));
         mockMvc.perform(conToken(get(URL).param("q", "DEGRAD"), admin))
                 .andExpect(jsonPath("$.totalElementos").value(1));
         mockMvc.perform(conToken(get(URL).param("tipoContrato", "ASALARIADO"), admin))
@@ -172,25 +181,57 @@ class EmpleadoControllerIT extends IntegracionBaseTest {
         int id = registrar(admin, nuevoBarbero("editar.cu17@houseofcut.bo"));
         Map<String, Object> cuerpo = new HashMap<>(Map.of(
                 "nombre", "Carlos Pérez", "correo", "carlos.perez@houseofcut.bo", "telefono", "+591 76543210",
-                "especialidad", "Barba clásica", "tipoContrato", "ASALARIADO", "turnoId", 3));
+                "servicios", List.of(idServicio("Corte Clásico")), "tipoContrato", "ASALARIADO", "turnoId", 3));
         mockMvc.perform(conToken(put(URL + "/" + id), admin).content(json(cuerpo)))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.mensaje").value("Empleado guardado correctamente"))
                 .andExpect(jsonPath("$.empleado.nombre").value("Carlos Pérez"))
                 .andExpect(jsonPath("$.empleado.correo").value("carlos.perez@houseofcut.bo"))
                 .andExpect(jsonPath("$.empleado.tipoContrato").value("ASALARIADO"))
-                .andExpect(jsonPath("$.empleado.turno.nombre").value("Completo"));
+                .andExpect(jsonPath("$.empleado.turno.nombre").value("Completo"))
+                .andExpect(jsonPath("$.empleado.especialidad").value("Corte Clásico"))
+                .andExpect(jsonPath("$.empleado.servicios.length()").value(1));
         long antes = bitacoraRepository.countByAccion("EMPLEADO_ACTUALIZAR");
+        long serviciosAntes = bitacoraRepository.countByAccion("EMPLEADO_SERVICIOS_ACTUALIZAR");
         assertThat(antes).isEqualTo(1);
 
+        // Repetir lo mismo (datos y servicios) no escribe bitácora.
         mockMvc.perform(conToken(put(URL + "/" + id), admin).content(json(cuerpo))).andExpect(status().isOk());
         assertThat(bitacoraRepository.countByAccion("EMPLEADO_ACTUALIZAR")).isEqualTo(antes);
+        assertThat(bitacoraRepository.countByAccion("EMPLEADO_SERVICIOS_ACTUALIZAR")).isEqualTo(serviciosAntes);
 
         cuerpo.put("correo", ADMIN_CORREO);
         mockMvc.perform(conToken(put(URL + "/" + id), admin).content(json(cuerpo)))
                 .andExpect(status().isConflict());
         mockMvc.perform(conToken(put(URL + "/99999"), admin).content(json(cuerpo)))
                 .andExpect(status().isNotFound());
+    }
+
+    @Test
+    @DisplayName("Especialidades al registrar: solo para Barbero; a un recepcionista se ignoran")
+    void especialidadesSoloBarbero() throws Exception {
+        String admin = tokenAdmin();
+        Map<String, Object> recep = nuevoBarbero("recep.especialidad@houseofcut.bo");
+        recep.put("rol", "Recepcionista");
+        recep.put("tipoContrato", "ASALARIADO");
+        recep.put("servicios", List.of(idServicio("Corte Clásico")));
+        int idRecep = registrar(admin, recep);
+        assertThat(empleadoServicioRepository.findByEmpleado_IdEmpleado(idRecep)).isEmpty();
+        assertThat(empleadoRepository.findById(idRecep).orElseThrow().getEspecialidad()).isNull();
+    }
+
+    /** Sin transacción de prueba, para que la reversión del registro sea real. */
+    @Test
+    @Transactional(propagation = Propagation.NOT_SUPPORTED)
+    @DisplayName("Especialidad inválida al registrar: 400 y no queda usuario ni empleado a medias")
+    void especialidadInvalida() throws Exception {
+        String admin = tokenAdmin();
+        Map<String, Object> invalido = nuevoBarbero("invalido.especialidad@houseofcut.bo");
+        invalido.put("servicios", List.of(99999));
+        mockMvc.perform(conToken(post(URL), admin).content(json(invalido)))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.message").value("Uno o más servicios no existen o están inhabilitados"));
+        assertThat(usuarioRepository.findByCorreo("invalido.especialidad@houseofcut.bo")).isEmpty();
     }
 
     @Test

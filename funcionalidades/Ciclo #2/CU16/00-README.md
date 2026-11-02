@@ -20,7 +20,7 @@
 | Citas en orden cronológico | Vista diaria: por barbero y hora. Vista semanal: por día y hora | Completo |
 | Código de colores por estado | Mismos colores que CU11: Pendiente amarillo, Confirmada verde, Atendida azul, Cancelada rojo, No asistió gris. El texto del estado siempre se muestra | Completo |
 | Nombre del cliente, teléfono y servicio | En cada tarjeta y en el detalle | Completo |
-| Si el anticipo ya fue cubierto | Se muestra el monto y la leyenda "Estado del pago no disponible": no existe registro de pagos hasta CU14 | Parcial (depende de CU14) |
+| Si el anticipo ya fue cubierto | Se muestra el monto y "Anticipo cubierto" o "Anticipo pendiente" según exista `pago_anticipo` (CU14) | Cumplido |
 | Detalle con ficha e historial rápido del cliente | Diálogo con la ficha y hasta 5 citas más del cliente, solo las que el usuario puede ver | Completo |
 | Agenda diaria y semanal | Vista diaria (por defecto, hoy) y semanal (lunes a domingo); se cambia con un selector | Completo |
 | Extra: cambio de vista Lista / Diaria / Semanal | Diaria (lista agrupada) y Semanal | Parcial (no hay un tercer modo) |
@@ -33,7 +33,7 @@ Flujos alternativos de la especificación usada por el equipo:
 | 2a Sin permiso | El backend responde 403; la pantalla muestra "No tiene permisos para acceder a la agenda" y "Volver al menú" |
 | 3a Sin citas | "No hay citas programadas para esta fecha" (o "…para esta semana"); los filtros siguen disponibles |
 | 5a Fecha inválida | "La fecha ingresada no es válida"; se conserva la última consulta. El backend también responde 400 |
-| 8a Registrar anticipo | Botón visible para Recepcionista y Administrador en citas PENDIENTE, **deshabilitado** hasta que exista CU14 |
+| 8a Registrar anticipo | Botón para quien tiene `CAJA_MOVIMIENTO_REGISTRAR` en citas PENDIENTE sin anticipo: abre el cobro de CU14, que confirma la cita |
 | 8b Gestionar cita | Abre `/citas` (CU11) en el día de la cita. El Barbero no ve 8a ni 8b |
 
 ## 2. API (`/api/v1/agenda`) — solo lectura
@@ -54,7 +54,7 @@ Sin `fecha` se usa hoy (hora de Bolivia, `America/La_Paz`). `vista` por defecto 
 - **Validaciones:** fecha inválida → 400 "La fecha ingresada no es válida"; estado fuera de `PENDIENTE, CONFIRMADA, ATENDIDA, CANCELADA, NO_ASISTIO` → 400 "Estado no válido"; vista distinta de `DIA`/`SEMANA` → 400 "Vista no válida".
 - **Citas sin barbero** (posibles con CU12): aparecen como "Sin asignar" al final, solo para Recepcionista y Administrador.
 - **Historial:** hasta 5 citas del mismo cliente, sin la consultada, de la más reciente a la más antigua; para un barbero, solo las suyas.
-- **Anticipo:** se muestra `reserva.monto_anticipo` (20 % que calcula CU11). No se afirma que esté pagado: CU14 todavía no registra pagos.
+- **Anticipo:** se muestra `reserva.monto_anticipo` (20 % que calcula CU11) y `anticipoPagado` (si existe su `pago_anticipo`, CU14).
 
 ## 4. Permisos (semilla `V2`)
 
@@ -73,6 +73,6 @@ Sin `fecha` se usa hoy (hora de Bolivia, `America/La_Paz`). `vista` por defecto 
 
 ## 6. Pendiente
 
-- **CU14:** al registrar pagos, mostrar si el anticipo está cubierto y habilitar "Registrar anticipo".
+- **CU14:** ya integrado (anticipo cubierto/pendiente y "Registrar anticipo" desde el detalle).
 - **Extras opcionales:** auto-refresco cada 60 s y tercer modo de vista.
 - **Mensaje 403 del backend:** hoy es el genérico "No tiene permiso para esta operación"; la pantalla muestra el texto de 2a. Cuando llegue a `main` el mapa de mensajes por ruta de `RestAccessDeniedHandler` (CU21, en `dev-prueba`), se puede agregar `/api/v1/agenda`.

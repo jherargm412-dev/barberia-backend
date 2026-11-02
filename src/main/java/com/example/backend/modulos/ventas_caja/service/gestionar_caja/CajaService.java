@@ -22,6 +22,8 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
 import java.math.RoundingMode;
+import java.time.LocalDate;
+import java.time.LocalTime;
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Map;
@@ -42,6 +44,30 @@ public class CajaService {
     @Transactional(readOnly = true)
     public CajaResponse actual() {
         return cajas.findFirstByEstado("ABIERTA").map(this::respuesta).orElse(null);
+    }
+
+    /** Máximo de días que abarca una consulta del historial (para que la lista no crezca sin límite). */
+    public static final int HISTORIAL_MAX_DIAS = 366;
+    public static final String MSG_RANGO_HISTORIAL = "La fecha desde no puede ser posterior a la fecha hasta";
+    public static final String MSG_RANGO_LARGO = "El rango del historial no puede superar " + HISTORIAL_MAX_DIAS + " días";
+
+    /**
+     * Historial de cajas cerradas con su arqueo (CU21): por fecha de apertura entre {@code desde} y {@code hasta}
+     * (por defecto, los últimos 30 días), de la más reciente a la más antigua.
+     */
+    @Transactional(readOnly = true)
+    public List<CajaResponse> historial(LocalDate desde, LocalDate hasta) {
+        LocalDate fin = hasta != null ? hasta : ahora().toLocalDate();
+        LocalDate inicio = desde != null ? desde : fin.minusDays(30);
+        if (inicio.isAfter(fin)) {
+            throw new ValidacionNegocioException(MSG_RANGO_HISTORIAL, Map.of("desde", MSG_RANGO_HISTORIAL));
+        }
+        if (inicio.plusDays(HISTORIAL_MAX_DIAS).isBefore(fin)) {
+            throw new ValidacionNegocioException(MSG_RANGO_LARGO, Map.of("desde", MSG_RANGO_LARGO));
+        }
+        return cajas.findByEstadoAndFechaAperturaBetweenOrderByFechaAperturaDesc("CERRADA",
+                        inicio.atStartOfDay(), fin.atTime(LocalTime.MAX))
+                .stream().map(this::respuesta).toList();
     }
 
     @Transactional(readOnly = true)
@@ -170,21 +196,22 @@ public class CajaService {
                 "ABIERTA".equals(caja.getEstado()) ? t.saldoEsperado() : caja.getSaldoEsperado(),
                 caja.getEfectivoContado(), caja.getDiferencia(), caja.getObservacionCierre(),
                 caja.getUsuarioApertura().getNombre(),
-                caja.getUsuarioCierre() == null ? null : caja.getUsuarioCierre().getNombre());
+                caja.getUsuarioCierre() == null ? null : caja.getUsuarioCierre().getNombre(), t.ingresosTarjeta());
     }
 
-    private record Totales(BigDecimal ingresosEfectivo, BigDecimal ingresosQr,
+    private record Totales(BigDecimal ingresosEfectivo, BigDecimal ingresosQr, BigDecimal ingresosTarjeta,
                            BigDecimal egresosEfectivo, BigDecimal saldoEsperado) {}
 
     private Totales totales(Caja caja) {
-        BigDecimal efectivo = CERO, qr = CERO, egresos = CERO;
+        BigDecimal efectivo = CERO, qr = CERO, tarjeta = CERO, egresos = CERO;
         for (MovimientoCaja m : movimientos.findByCaja_IdCajaOrderByFechaDescIdMovimientoCajaDesc(caja.getIdCaja())) {
             if ("INGRESO".equals(m.getTipo())) {
                 if ("QR".equals(m.getMedioPago())) qr = qr.add(m.getMonto());
+                else if ("TARJETA".equals(m.getMedioPago())) tarjeta = tarjeta.add(m.getMonto());
                 else efectivo = efectivo.add(m.getMonto());
             } else if ("EFECTIVO".equals(m.getMedioPago())) egresos = egresos.add(m.getMonto());
         }
-        return new Totales(efectivo, qr, egresos, caja.getMontoInicial().add(efectivo).subtract(egresos));
+        return new Totales(efectivo, qr, tarjeta, egresos, caja.getMontoInicial().add(efectivo).subtract(egresos));
     }
 
     private static BigDecimal dinero(BigDecimal valor, boolean aceptaCero, String mensaje, String campo) {

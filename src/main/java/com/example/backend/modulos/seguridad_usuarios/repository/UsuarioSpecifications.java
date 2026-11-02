@@ -14,6 +14,11 @@ public final class UsuarioSpecifications {
     private UsuarioSpecifications() {
     }
 
+    /** Deja fuera al usuario técnico "Reservas en línea" (V17): no es una persona ni se administra en CU01. */
+    public static Specification<Usuario> sinUsuariosTecnicos() {
+        return (root, query, cb) -> cb.notEqual(root.get("correo"), Usuario.CORREO_RESERVAS_WEB);
+    }
+
     public static Specification<Usuario> conEstado(EstadoUsuario estado) {
         return (root, query, cb) -> estado == null ? null : cb.equal(root.get("estado"), estado);
     }

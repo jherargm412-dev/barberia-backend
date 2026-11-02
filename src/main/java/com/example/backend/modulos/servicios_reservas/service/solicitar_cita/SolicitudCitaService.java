@@ -8,6 +8,8 @@ import com.example.backend.modulos.servicios_reservas.dto.gestionar_citas.Reserv
 import com.example.backend.modulos.servicios_reservas.dto.solicitar_cita.SolicitarCitaRequest;
 import com.example.backend.modulos.servicios_reservas.entity.Reserva;
 import com.example.backend.modulos.servicios_reservas.entity.Servicio;
+import com.example.backend.modulos.servicios_reservas.mapper.gestionar_citas.ReservaMapper;
+import com.example.backend.modulos.servicios_reservas.repository.ReservaRepository;
 import com.example.backend.modulos.servicios_reservas.repository.ServicioRepository;
 import com.example.backend.modulos.servicios_reservas.service.gestionar_citas.ReservaService;
 import com.example.backend.security.UsuarioAutenticado;
@@ -31,10 +33,16 @@ public class SolicitudCitaService {
 
     public static final String MSG_SIN_CLIENTE =
             "Su cuenta no está asociada a un cliente activo. Comuníquese con la barbería";
+    /** Citas web sin pagar que puede tener a la vez un cliente: así nadie bloquea la agenda reservando sin pagar. */
+    public static final int MAX_WEB_SIN_PAGAR = 2;
+    public static final String MSG_MAX_SIN_PAGAR = "Ya tiene " + MAX_WEB_SIN_PAGAR
+            + " citas pendientes de pago. Pague el anticipo de una o espere a que venza antes de reservar otra";
 
     private final ReservaService reservaService;
     private final ClienteRepository clienteRepository;
     private final ServicioRepository servicioRepository;
+    private final ReservaRepository reservaRepository;
+    private final ReservaMapper reservaMapper;
 
     /** Barberos habilitados para el servicio que el cliente eligió. */
     @Transactional(readOnly = true)
@@ -43,6 +51,13 @@ public class SolicitudCitaService {
             throw new ValidacionNegocioException(ReservaService.MSG_CAMPOS_VACIOS, Map.of("servicioId", "obligatorio"));
         }
         return reservaService.barberosPara(servicioId);
+    }
+
+    /** Rechaza la reserva si el cliente ya tiene {@link #MAX_WEB_SIN_PAGAR} citas web sin pagar (con o sin cuenta). */
+    static void exigirCupoWeb(Cliente cliente, ReservaRepository reservaRepository) {
+        if (reservaRepository.contarWebSinPagar(cliente.getIdCliente()) >= MAX_WEB_SIN_PAGAR) {
+            throw new ValidacionNegocioException(MSG_MAX_SIN_PAGAR);
+        }
     }
 
     /** Crea la cita PENDIENTE del cliente logueado. El anticipo (20 %) lo calcula el backend. */
@@ -69,9 +84,19 @@ public class SolicitudCitaService {
         Servicio servicio = servicioRepository.findById(peticion.servicioId()).filter(Servicio::isActivo)
                 .orElseThrow(() -> new ValidacionNegocioException(ReservaService.MSG_SERVICIO_INVALIDO,
                         Map.of("servicioId", ReservaService.MSG_SERVICIO_INVALIDO)));
+        exigirCupoWeb(cliente, reservaRepository);
 
         return reservaService.crearCita(cliente, servicio, peticion.empleadoId(), peticion.fecha(),
                 peticion.horaInicio(), peticion.horaFin(), Reserva.CANAL_WEB, Reserva.PENDIENTE, actor);
+    }
+
+    /** "Mis citas" del cliente logueado (sin cliente asociado: lista vacía). */
+    @Transactional(readOnly = true)
+    public List<ReservaResponse> misCitas(UsuarioAutenticado actor) {
+        return clienteRepository.findByUsuario_IdUsuario(actor.idUsuario())
+                .map(c -> reservaRepository.findByCliente_IdClienteOrderByFechaDescHoraInicioDesc(c.getIdCliente())
+                        .stream().map(reservaMapper::aResponse).toList())
+                .orElse(List.of());
     }
 
     private static void siFalta(Map<String, String> errores, String campo, Object valor) {

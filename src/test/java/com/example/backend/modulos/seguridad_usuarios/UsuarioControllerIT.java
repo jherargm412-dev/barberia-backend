@@ -56,6 +56,9 @@ class UsuarioControllerIT extends IntegracionBaseTest {
                 .andExpect(jsonPath("$.usuario.roles[0].nombre").value("Barbero"))
                 .andExpect(jsonPath("$.usuario.empleado.tipoContrato").value("COMISIONISTA"))
                 .andExpect(jsonPath("$.usuario.empleado.turno.nombre").value("Mañana"))
+                // Especialidad = servicio elegido (2 = Corte Degradado (Fade)), habilitado para citas.
+                .andExpect(jsonPath("$.usuario.empleado.servicios[0].nombre").value("Corte Degradado (Fade)"))
+                .andExpect(jsonPath("$.usuario.empleado.especialidad").value("Corte Degradado (Fade)"))
                 .andExpect(jsonPath("$.usuario.cliente").isEmpty())
                 .andReturn();
         int id = leer(r).get("usuario").get("idUsuario").asInt();
@@ -197,6 +200,29 @@ class UsuarioControllerIT extends IntegracionBaseTest {
         Bitacora b = bitacoraRepository.findByAccionOrderByIdBitacoraDesc("USUARIO_ACTUALIZAR").getFirst();
         assertThat(b.getDatosAnteriores()).contains("Cliente Prueba");
         assertThat(b.getDatosNuevos()).contains("Nombre Nuevo");
+    }
+
+    @Test
+    @DisplayName("Especialidades del barbero en CU01: se cambian al editar; si deja de ser Barbero no tiene especialidad")
+    void especialidadesDelBarbero() throws Exception {
+        String admin = tokenAdmin();
+        int id = crearUsuario(admin, barbero("espec.cu01@houseofcut.bo", "Clave123!"));
+        Map<String, Object> cambios = new HashMap<>(Map.of(
+                "nombre", "Barbero Prueba", "correo", "espec.cu01@houseofcut.bo",
+                "roles", List.of("Barbero"),
+                "empleado", Map.of("tipoContrato", "COMISIONISTA", "servicios", List.of(1, 3))));
+        mockMvc.perform(conToken(put("/api/v1/usuarios/" + id), admin).content(json(cambios)))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.empleado.servicios.length()").value(2))
+                .andExpect(jsonPath("$.empleado.especialidad").value("Corte Clásico, Perfilado de Barba"));
+        Bitacora b = bitacoraRepository.findByAccionOrderByIdBitacoraDesc("EMPLEADO_SERVICIOS_ACTUALIZAR").getFirst();
+        assertThat(b.getDetalle()).contains("+Corte Clásico", "-Corte Degradado (Fade)");
+
+        cambios.put("roles", List.of("Recepcionista"));
+        cambios.put("empleado", Map.of("tipoContrato", "ASALARIADO"));
+        mockMvc.perform(conToken(put("/api/v1/usuarios/" + id), admin).content(json(cambios)))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.empleado.especialidad").isEmpty());
     }
 
     @Test

@@ -16,7 +16,7 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
-/** Apoyo de las pruebas de citas (CU10, CU11): barberos con servicios y horario, clientes y servicios. */
+/** Apoyo de las pruebas de citas (CU10, CU11, CU12, CU14): barberos con servicios y horario, clientes, caja y anticipos. */
 abstract class CitasBaseTest extends IntegracionBaseTest {
 
     @Autowired

@@ -65,7 +65,7 @@ public class DisponibilidadService {
         if (jornada == null || !jornada.contiene(horaInicio, horaFin)) {
             return false;
         }
-        // 5. Sin solape con otra reserva PENDIENTE o CONFIRMADA del barbero.
+        // 5. Sin solape con otra reserva PENDIENTE, CONFIRMADA o ATENDIDA del barbero (misma regla que CU10).
         return !reservaConsultas.existeSolape(empleadoId, fecha, horaInicio, horaFin);
     }
 }

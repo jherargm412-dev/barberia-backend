@@ -101,9 +101,13 @@ class DisponibilidadControllerIT extends CitasBaseTest {
                 INSERT INTO reserva (cliente_id, empleado_id, servicio_id, fecha, hora_inicio, hora_fin, canal, estado)
                 VALUES (?, ?, ?, ?, '13:00', '13:30', 'PRESENCIAL', 'ATENDIDA')""", cliente, barbero, corte, FECHA);
 
-        List<String> horas = inicios(consultar(admin, consulta(corte, FECHA)).get("horarios"));
+        JsonNode respuesta = consultar(admin, consulta(corte, FECHA));
+        List<String> horas = inicios(respuesta.get("horarios"));
         assertThat(horas).contains("09:30", "10:30", "12:00", "13:30")
                 .doesNotContain("10:00", "11:00", "11:30", "13:00");
+        // Las que chocan con una cita vienen aparte, para mostrarlas en rojo en la grilla.
+        assertThat(inicios(respuesta.get("barberos").get(0).get("horasOcupadas")))
+                .containsExactly("10:00", "11:00", "11:30", "13:00");
 
         List<String> reprogramando = inicios(consultar(admin, consulta(corte, FECHA)
                 .param("excluirReserva", String.valueOf(diez))).get("horarios"));
@@ -218,7 +222,7 @@ class DisponibilidadControllerIT extends CitasBaseTest {
     }
 
     @Test
-    @DisplayName("7. Recepcionista: 200; Barbero y Cliente: 403; sin token: 401")
+    @DisplayName("7. Recepcionista y Cliente (CU12): 200; Barbero: 403; sin token: 401")
     void permisos() throws Exception {
         String admin = tokenAdmin();
         int corte = idServicio("Corte Clásico");
@@ -226,12 +230,12 @@ class DisponibilidadControllerIT extends CitasBaseTest {
         crearUsuario(admin, barbero("barbero9.cu10@houseofcut.bo", "Clave123!"));
         crearUsuario(admin, cliente("cliente.cu10@houseofcut.bo", "Clave123!"));
 
-        mockMvc.perform(conToken(consulta(corte, FECHA), token("recep.cu10@houseofcut.bo", "Clave123!")))
-                .andExpect(status().isOk());
-        for (String correo : new String[]{"barbero9.cu10@houseofcut.bo", "cliente.cu10@houseofcut.bo"}) {
+        for (String correo : new String[]{"recep.cu10@houseofcut.bo", "cliente.cu10@houseofcut.bo"}) {
             mockMvc.perform(conToken(consulta(corte, FECHA), token(correo, "Clave123!")))
-                    .andExpect(status().isForbidden());
+                    .andExpect(status().isOk());
         }
+        mockMvc.perform(conToken(consulta(corte, FECHA), token("barbero9.cu10@houseofcut.bo", "Clave123!")))
+                .andExpect(status().isForbidden());
         mockMvc.perform(consulta(corte, FECHA)).andExpect(status().isUnauthorized());
     }
 }

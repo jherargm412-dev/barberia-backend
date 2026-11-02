@@ -4,11 +4,13 @@ import com.example.backend.modulos.ventas_caja.dto.gestionar_caja.*;
 import com.example.backend.modulos.ventas_caja.service.gestionar_caja.CajaService;
 import com.example.backend.security.UsuarioAutenticado;
 import lombok.RequiredArgsConstructor;
+import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.http.HttpStatus;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
 
+import java.time.LocalDate;
 import java.util.List;
 
 /** API de CU21; cada operación exige su permiso específico. */
@@ -21,6 +23,15 @@ public class CajaController {
     @GetMapping("/actual")
     @PreAuthorize("hasAuthority('CAJA_CONSULTAR')")
     public CajaResponse actual() { return servicio.actual(); }
+
+    /** Historial de cajas cerradas con su arqueo; {@code desde}/{@code hasta}: fecha de apertura (por defecto 30 días). */
+    @GetMapping("/cerradas")
+    @PreAuthorize("hasAuthority('CAJA_CONSULTAR')")
+    public List<CajaResponse> historial(
+            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate desde,
+            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate hasta) {
+        return servicio.historial(desde, hasta);
+    }
 
     @GetMapping("/{id}")
     @PreAuthorize("hasAuthority('CAJA_CONSULTAR')")

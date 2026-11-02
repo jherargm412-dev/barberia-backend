@@ -66,7 +66,6 @@ public class ReservaService {
     public static final int TOLERANCIA_MINUTOS = 15;
     /** CU10 paso C: citas que ocupan el horario del barbero. */
     public static final List<String> OCUPAN_HORARIO = ConsultaDisponibilidadService.OCUPAN_HORARIO;
-    private static final List<String> ESTADOS_INICIALES = List.of(Reserva.PENDIENTE, Reserva.CONFIRMADA);
     /** La recepción no usa WEB (CU12). */
     private static final List<String> CANALES_RECEPCION =
             List.of(Reserva.CANAL_PRESENCIAL, Reserva.CANAL_TELEFONO, Reserva.CANAL_WHATSAPP);
@@ -78,7 +77,9 @@ public class ReservaService {
     public static final String MSG_CANAL_WEB = "El canal WEB es exclusivo de las solicitudes en línea";
     public static final String MSG_CANAL_INVALIDO = "El canal debe ser PRESENCIAL, TELEFONO o WHATSAPP";
     public static final String MSG_ESTADO_INVALIDO = "Estado no válido";
-    public static final String MSG_ESTADO_INICIAL = "Una cita nueva solo puede quedar Pendiente o Confirmada";
+    public static final String MSG_ESTADO_INICIAL =
+            "Una cita nueva queda Pendiente; se confirma al registrar el pago del anticipo";
+    public static final String MSG_CONFIRMAR_SIN_PAGO = "Para confirmar la cita registre el pago del anticipo";
     public static final String MSG_CLIENTE_INVALIDO = "El cliente no existe";
     public static final String MSG_SERVICIO_INVALIDO = "El servicio no existe o está inhabilitado";
     public static final String MSG_BARBERO_INVALIDO = "El barbero no existe, está desvinculado o no tiene rol Barbero";
@@ -169,9 +170,9 @@ public class ReservaService {
         } else if (!CANALES_RECEPCION.contains(canal)) {
             invalidos.agregar("canal", MSG_CANAL_INVALIDO);
         }
+        // Confirmar = cobrar: toda cita nace PENDIENTE y solo CU14 (con su pago e ingreso en caja) la confirma.
         String estadoPedido = normalizar(peticion.estado());
-        String estado = estadoPedido == null ? Reserva.PENDIENTE : estadoPedido;
-        if (!ESTADOS_INICIALES.contains(estado)) {
+        if (estadoPedido != null && !Reserva.PENDIENTE.equals(estadoPedido)) {
             invalidos.agregar("estado", MSG_ESTADO_INICIAL);
         }
         invalidos.lanzarSiHay(null);
@@ -181,7 +182,7 @@ public class ReservaService {
         Servicio servicio = servicioRepository.findById(peticion.servicioId()).filter(Servicio::isActivo)
                 .orElseThrow(() -> new ValidacionNegocioException(MSG_SERVICIO_INVALIDO, Map.of("servicioId", MSG_SERVICIO_INVALIDO)));
         return crearCita(cliente, servicio, peticion.empleadoId(), peticion.fecha(),
-                peticion.horaInicio(), peticion.horaFin(), canal, estado, actor);
+                peticion.horaInicio(), peticion.horaFin(), canal, Reserva.PENDIENTE, actor);
     }
 
     /**
@@ -206,6 +207,7 @@ public class ReservaService {
             reserva.setCanal(canal);
             reserva.setEstado(estado);
             reserva.setMontoAnticipo(servicio.getPrecio().multiply(PORCENTAJE_ANTICIPO).setScale(2, RoundingMode.HALF_UP));
+            reserva.setFechaRegistro(ahora());
             Reserva guardada = reservaRepository.saveAndFlush(reserva);
             bitacoraService.registrar(referenciaActor(actor), RESERVA_CREAR, TABLA_RESERVA,
                     "Cita #" + guardada.getIdReserva() + " de '" + cliente.getNombre() + "' el "
@@ -215,7 +217,7 @@ public class ReservaService {
         });
     }
 
-    /** CU12 reutiliza la validación de CU11: horas coherentes y cita no en el pasado. Lanza 400 si falla. */
+    /** CU12 reutiliza la validación de CU11: horas coherentes, duración válida y cita no en el pasado. Lanza 400 si falla. */
     public static void validarHorarioCita(LocalDate fecha, LocalTime inicio, LocalTime fin) {
         Errores invalidos = new Errores();
         validarHorario(invalidos, fecha, inicio, fin);
@@ -226,7 +228,7 @@ public class ReservaService {
 
     @Transactional
     public ReservaResponse reprogramar(Integer id, ReprogramarReservaRequest p, UsuarioAutenticado actor) {
-        Reserva reserva = buscar(id);
+        Reserva reserva = buscarBloqueada(id);
         exigirNoFinal(reserva);
         ReprogramarReservaRequest peticion = p == null ? new ReprogramarReservaRequest(null, null, null, null) : p;
         Errores vacios = new Errores();
@@ -270,9 +272,17 @@ public class ReservaService {
 
     // ---------- Cambio de estado y asistencia (paso 3) ----------
 
-    /** PENDIENTE → CONFIRMADA (el cliente pagó el anticipo o confirmó por teléfono/WhatsApp). */
+    /**
+     * PENDIENTE → CONFIRMADA. Confirmar = cobrar: la cita solo se confirma con el anticipo pagado (CU14), que
+     * ya la deja CONFIRMADA al cobrar. Sin pago se rechaza (409) para que no haya citas confirmadas sin dinero en caja.
+     */
     @Transactional
     public ReservaResponse confirmar(Integer id, UsuarioAutenticado actor) {
+        Reserva reserva = buscarBloqueada(id);
+        if (!reserva.isAnticipoPagado() && !reserva.estaFinalizada()
+                && !Reserva.CONFIRMADA.equals(reserva.getEstado())) {
+            throw new ConflictoException(MSG_CONFIRMAR_SIN_PAGO);
+        }
         return cambiarEstado(id, Reserva.CONFIRMADA, RESERVA_CONFIRMAR, actor);
     }
 
@@ -294,7 +304,7 @@ public class ReservaService {
     }
 
     private ReservaResponse cambiarEstado(Integer id, String destino, String accion, UsuarioAutenticado actor) {
-        Reserva reserva = buscar(id);
+        Reserva reserva = buscarBloqueada(id);
         if (reserva.getEstado().equals(destino)) {
             return mapper.aResponse(reserva); // idempotente: un doble clic no duplica la bitácora
         }
@@ -308,11 +318,15 @@ public class ReservaService {
             throw new ValidacionNegocioException(MSG_TOLERANCIA);
         }
         String anterior = reserva.getEstado();
+        // Regla de negocio: el anticipo pagado nunca se devuelve, aunque se cancele la cita.
+        String nota = Reserva.CANCELADA.equals(destino) && reserva.isAnticipoPagado()
+                ? " (el anticipo pagado no se devuelve)" : "";
         return guardando(() -> {
             reserva.setEstado(destino);
             Reserva guardada = reservaRepository.saveAndFlush(reserva);
             bitacoraService.registrar(referenciaActor(actor), accion, TABLA_RESERVA,
-                    "Cita #" + id + " de '" + guardada.getCliente().getNombre() + "': " + anterior + " → " + destino,
+                    "Cita #" + id + " de '" + guardada.getCliente().getNombre() + "': " + anterior + " → " + destino
+                            + nota,
                     Map.of("idReserva", id, "estado", anterior),
                     Map.of("idReserva", id, "estado", destino));
             return mapper.aResponse(guardada);
@@ -321,10 +335,16 @@ public class ReservaService {
 
     // ---------- Validaciones ----------
 
-    /** Horas coherentes y cita en el futuro (hora de Bolivia). */
+    /** Horas coherentes, duración razonable (la misma regla que CU10) y cita en el futuro (hora de Bolivia). */
     private static void validarHorario(Errores errores, LocalDate fecha, LocalTime inicio, LocalTime fin) {
         if (!fin.isAfter(inicio)) {
             errores.agregar("horaFin", MSG_HORAS);
+        } else {
+            long minutos = java.time.Duration.between(inicio, fin).toMinutes();
+            if (minutos < ConsultaDisponibilidadService.DURACION_MINIMA
+                    || minutos > ConsultaDisponibilidadService.DURACION_MAXIMA || minutos % 5 != 0) {
+                errores.agregar("horaFin", ConsultaDisponibilidadService.MSG_DURACION);
+            }
         }
         if (fecha.atTime(inicio).isBefore(ahora())) {
             errores.agregar("fecha", MSG_PASADO);
@@ -410,6 +430,15 @@ public class ReservaService {
     private Reserva buscar(Integer id) {
         return reservaRepository.findWithDetalleByIdReserva(id)
                 .orElseThrow(() -> new RecursoNoEncontradoException("Cita no encontrada: " + id));
+    }
+
+    /**
+     * Igual que {@link #buscar}, pero bloqueando la fila hasta el fin de la transacción: si a la vez se cobra el
+     * anticipo (CU14) o vence la cita web (CU12), uno espera al otro y ve el estado ya actualizado.
+     */
+    private Reserva buscarBloqueada(Integer id) {
+        reservaRepository.bloquear(id).orElseThrow(() -> new RecursoNoEncontradoException("Cita no encontrada: " + id));
+        return buscar(id);
     }
 
     private Usuario referenciaActor(UsuarioAutenticado actor) {

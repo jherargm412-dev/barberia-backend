@@ -1,6 +1,8 @@
 package com.example.backend.modulos.servicios_reservas.service.registrar_pago_anticipo;
 
 import java.math.BigDecimal;
+import java.time.Clock;
+import java.time.LocalDateTime;
 
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -15,7 +17,10 @@ import com.example.backend.modulos.servicios_reservas.dto.registrar_pago_anticip
 import com.example.backend.modulos.servicios_reservas.dto.registrar_pago_anticipo.QrAnticipoResponse;
 import com.example.backend.modulos.servicios_reservas.entity.PagoAnticipo;
 import com.example.backend.modulos.servicios_reservas.entity.Reserva;
+import com.example.backend.modulos.servicios_reservas.mapper.gestionar_citas.ReservaMapper;
 import com.example.backend.modulos.servicios_reservas.repository.ReservaRepository;
+import com.example.backend.modulos.servicios_reservas.service.solicitar_cita.ActorReservasWeb;
+import com.example.backend.modulos.servicios_reservas.service.solicitar_cita.ReservaInvitadoService;
 import com.example.backend.modulos.ventas_caja.entity.Caja;
 import com.example.backend.security.UsuarioAutenticado;
 
@@ -36,12 +41,19 @@ public class PagoAnticipoWebService {
     public static final String MSG_PAGO_NO_CONFIRMADO =
             "El pago no ha sido confirmado. Verifique la transacción e intente nuevamente";
 
+    public static final String MSG_PLAZO_VENCIDO =
+            "El plazo para pagar el anticipo de esta cita ya venció. Solicite una nueva cita";
+
     private static final String MSG_NO_ENCONTRADA = "Cita no encontrada: ";
 
     private final PagoAnticipoService pagoAnticipoService;
     private final PasarelaQr pasarelaQr;
     private final ReservaRepository reservaRepository;
+    private final ReservaInvitadoService reservaInvitadoService;
+    private final ActorReservasWeb actorReservasWeb;
     private final ClienteRepository clienteRepository;
+    private final ReservaMapper reservaMapper;
+    private final Clock reloj;
 
     /**
      * Flujo A, paso 2: genera el QR por el anticipo exacto de la reserva. Comprueba que la cita sea del cliente,
@@ -50,11 +62,26 @@ public class PagoAnticipoWebService {
     @Transactional(readOnly = true)
     public QrAnticipoResponse generarQr(Integer idReserva, UsuarioAutenticado actor) {
         reservaPropia(idReserva, actor); // primero la propiedad: así una cita ajena no revela nada
-        Reserva reserva = pagoAnticipoService.reservaPorCobrar(idReserva);
+        return generar(idReserva);
+    }
+
+    /** Lo mismo para un invitado sin cuenta (CU12): la cita se identifica con el código secreto de su enlace. */
+    @Transactional(readOnly = true)
+    public QrAnticipoResponse generarQrInvitado(String codigo) {
+        return generar(reservaInvitadoService.porCodigo(codigo).getIdReserva());
+    }
+
+    private QrAnticipoResponse generar(Integer idReserva) {
+        Reserva reserva = pagoAnticipoService.reservaPorCobrar(idReserva, false); // solo lectura: sin bloqueo
         pagoAnticipoService.exigirCajaAbierta(PagoAnticipoService.MSG_SIN_CAJA_WEB);
+        // Cita web: el QR no puede durar más que el plazo para pagarla (después se cancela sola).
+        LocalDateTime pagarAntesDe = reservaMapper.pagarAntesDe(reserva);
+        if (pagarAntesDe != null && !pagarAntesDe.isAfter(LocalDateTime.now(reloj))) {
+            throw new ValidacionNegocioException(MSG_PLAZO_VENCIDO);
+        }
 
         try {
-            PasarelaQr.QrGenerado qr = pasarelaQr.generar(idReserva, reserva.getMontoAnticipo());
+            PasarelaQr.QrGenerado qr = pasarelaQr.generar(idReserva, reserva.getMontoAnticipo(), pagarAntesDe);
             return new QrAnticipoResponse(qr.referencia(), qr.contenido(), reserva.getMontoAnticipo(), qr.venceEn());
         } catch (PasarelaQrException ex) {
             log.error(MSG_QR_NO_GENERADO, ex);
@@ -68,10 +95,24 @@ public class PagoAnticipoWebService {
      */
     @Transactional
     public PagoAnticipoResponse confirmarQr(Integer idReserva, ConfirmarPagoQrRequest p, UsuarioAutenticado actor) {
-        String referencia = p == null || p.referencia() == null ? "" : p.referencia().trim();
-
         reservaPropia(idReserva, actor);
-        Reserva reserva = pagoAnticipoService.reservaPorCobrar(idReserva);
+        return confirmar(idReserva, p, actor);
+    }
+
+    /** Lo mismo para un invitado sin cuenta: el pago lo firma el usuario técnico "Reservas en línea". */
+    @Transactional
+    public PagoAnticipoResponse confirmarQrInvitado(String codigo, ConfirmarPagoQrRequest p) {
+        PagoAnticipoResponse pago = confirmar(reservaInvitadoService.porCodigo(codigo).getIdReserva(), p,
+                actorReservasWeb.actor());
+        // El comprobante público no revela los datos completos del cliente (ver ReservaInvitadoService.publica).
+        return new PagoAnticipoResponse(pago.idPagoAnticipo(), pago.metodo(), pago.montoEfectivo(), pago.montoQr(),
+                pago.montoTotal(), pago.referenciaQr(), pago.fechaPago(), pago.idCaja(), pago.registradoPor(),
+                ReservaInvitadoService.publica(pago.reserva()));
+    }
+
+    private PagoAnticipoResponse confirmar(Integer idReserva, ConfirmarPagoQrRequest p, UsuarioAutenticado actor) {
+        String referencia = p == null || p.referencia() == null ? "" : p.referencia().trim();
+        Reserva reserva = pagoAnticipoService.reservaPorCobrar(idReserva, true);
         BigDecimal monto = reserva.getMontoAnticipo();
 
         if (!pagoVerificado(referencia, idReserva, monto)) {

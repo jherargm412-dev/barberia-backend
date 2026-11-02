@@ -55,7 +55,7 @@ class PerfilControllerIT extends IntegracionBaseTest {
                 .andExpect(jsonPath("$.correo").value("barbero.cu04@houseofcut.bo"))
                 .andExpect(jsonPath("$.telefono").value("71234567"))
                 .andExpect(jsonPath("$.roles[0]").value("Barbero"))
-                .andExpect(jsonPath("$.empleado.especialidad").value("Degradados"))
+                .andExpect(jsonPath("$.empleado.especialidad").value("Corte Degradado (Fade)"))
                 .andExpect(jsonPath("$.empleado.tipoContrato").value("COMISIONISTA"))
                 .andExpect(jsonPath("$.empleado.turno").value("Mañana"))
                 .andExpect(jsonPath("$.contrasena").doesNotExist());

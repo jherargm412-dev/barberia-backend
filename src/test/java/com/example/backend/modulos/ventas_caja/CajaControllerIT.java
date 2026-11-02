@@ -1,11 +1,14 @@
 package com.example.backend.modulos.ventas_caja;
 
 import com.example.backend.modulos.seguridad_usuarios.IntegracionBaseTest;
+import com.example.backend.modulos.seguridad_usuarios.entity.Bitacora;
+import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.http.MediaType;
 import org.springframework.test.web.servlet.MvcResult;
 import org.springframework.test.web.servlet.request.MockHttpServletRequestBuilder;
 
+import java.time.LocalDate;
 import java.util.Map;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -98,5 +101,38 @@ class CajaControllerIT extends IntegracionBaseTest {
                         .content(json(Map.of("efectivoContado", 50))))
                 .andExpect(status().isForbidden());
         mockMvc.perform(get(URL + "/actual")).andExpect(status().isUnauthorized());
+    }
+
+    @Test
+    @DisplayName("Historial: solo cajas cerradas con su arqueo, la más reciente primero; la abierta no sale; rango inválido: 400")
+    void historialDeCajasCerradas() throws Exception {
+        String token = tokenAdmin();
+        int primera = abrir(token, "50.00");
+        mockMvc.perform(autorizado(post(URL + "/" + primera + "/cierres"), token)
+                        .content(json(Map.of("efectivoContado", 50.00))))
+                .andExpect(status().isOk());
+        int segunda = abrir(token, "100.00");
+        mockMvc.perform(autorizado(post(URL + "/" + segunda + "/cierres"), token)
+                        .content(json(Map.of("efectivoContado", 110.00, "observacion", "Sobrante de cambio"))))
+                .andExpect(status().isOk());
+        abrir(token, "20.00"); // abierta: no es parte del historial
+
+        mockMvc.perform(autorizado(get(URL + "/cerradas"), token))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.length()").value(2))
+                .andExpect(jsonPath("$[0].idCaja").value(segunda))
+                .andExpect(jsonPath("$[0].diferencia").value(10.00))
+                .andExpect(jsonPath("$[0].observacionCierre").value("Sobrante de cambio"))
+                .andExpect(jsonPath("$[0].responsableCierre").exists())
+                .andExpect(jsonPath("$[1].idCaja").value(primera))
+                .andExpect(jsonPath("$[1].diferencia").value(0.00));
+
+        String manana = LocalDate.now(Bitacora.ZONA_HORARIA)
+                .plusDays(1).toString();
+        mockMvc.perform(autorizado(get(URL + "/cerradas").param("desde", manana).param("hasta", manana), token))
+                .andExpect(jsonPath("$.length()").value(0));
+        mockMvc.perform(autorizado(get(URL + "/cerradas").param("desde", manana).param("hasta", "2020-01-01"), token))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.message").value("La fecha desde no puede ser posterior a la fecha hasta"));
     }
 }

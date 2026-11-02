@@ -50,7 +50,7 @@ Aplicación local (backend con el esquema `cu_test`, frontend en Vite). Los dato
 | Vista semanal | Siete días de lunes a domingo, cantidad por día, "Sin citas" en días vacíos, marca "Hoy", orden por hora dentro del día, cita cancelada visible y barbero en cada tarjeta |
 | Filtro por barbero (semana) | Se envía `barberoId` y solo quedan las citas de ese barbero |
 | Fecha inválida (5a) | Mensaje "La fecha ingresada no es válida" y se conserva la última consulta |
-| Detalle | Ficha completa e historial del cliente. "Registrar anticipo" **deshabilitado** con el aviso de CU14. "Gestionar cita" abre `/citas` (CU11) en el día de la cita |
+| Detalle | Ficha completa e historial del cliente. "Registrar anticipo" abre el cobro de CU14 (citas pendientes sin anticipo). "Gestionar cita" abre `/citas` (CU11) en el día de la cita |
 | Barbero | Menú sin "Citas"; solo sus citas en día y semana; sin filtro de barbero; el detalle solo tiene "Cerrar"; historial solo con sus citas. Una petición manipulada con el `barberoId` de otro barbero devuelve igualmente sus propias citas; la cita ajena responde 404 y `/barberos` 403 |
 | Cliente (2a) | Sin opción en el menú; `/agenda` muestra "No tiene permisos para acceder a la agenda" y "Volver al menú"; la API responde 403 |
 | Diseño adaptable | 375 px: una columna, sin desplazamiento horizontal, menú con botón hamburguesa. 768 px: dos columnas. 1440 px: tres columnas y menú lateral |

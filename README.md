@@ -33,7 +33,9 @@ No hace falta instalar Gradle: se usa el wrapper (`./gradlew`).
    ```
 
    Como mínimo cambia `DB_PASSWORD` (la contraseña de tu PostgreSQL) y `JWT_SECRET`
-   (cualquier texto de 32 caracteres o más). El `.env` **nunca** se sube a Git.
+   (cualquier texto de 32 caracteres o más). Para probar Stripe, reemplaza también
+   `STRIPE_SECRET_KEY` y `STRIPE_PUBLISHABLE_KEY` con las claves **de prueba** de la
+   cuenta del equipo. El `.env` **nunca** se sube a Git.
 
 4. Levantar el backend:
 
@@ -43,6 +45,25 @@ No hace falta instalar Gradle: se usa el wrapper (`./gradlew`).
    ```
 
    La API queda en `http://localhost:8080`.
+
+### Probar pagos con Stripe
+
+1. En el Dashboard de Stripe, activa el modo de prueba y copia las claves de prueba
+   (`sk_test_...` y `pk_test_...`) en `STRIPE_SECRET_KEY` y `STRIPE_PUBLISHABLE_KEY`
+   de `barberia-backend/.env`. No compartas ni subas la clave secreta.
+2. Reinicia el backend (`gradlew.bat bootRun`) o, para el entorno completo en Docker,
+   ejecuta `docker compose up --build` desde `barberia-backend`. Compose también lee
+   esas dos variables del `.env` y las pasa al contenedor del backend.
+3. Inicia sesión con un usuario que tenga los permisos `VENTA_REGISTRAR` y
+   `PASARELA_PAGO_COBRAR`, y abre una caja. En **Ventas → Registrar venta**, agrega
+   servicios o productos y pulsa **Calcular saldo**; entonces aparecerá Stripe como
+   método de cobro si está activo y correctamente configurado.
+4. Completa el formulario seguro de Stripe con una tarjeta de prueba publicada por
+   Stripe (por ejemplo, `4242 4242 4242 4242`), una fecha futura y cualquier CVC.
+
+Estas instrucciones son solo para pruebas. No configures claves live en el entorno
+local ni en archivos versionados; pasar a producción requiere configurar los secretos
+en el proveedor de despliegue y verificar previamente la cuenta, el país y la moneda.
 
 ## Pruebas
 
@@ -120,7 +141,7 @@ barberia-backend/
 │       ├── gestion_clientes/   # CU06 (Clientes)
 │       ├── gestion_empleados/  # Por implementar
 │       ├── servicios_reservas/ # CU08 (Catálogo de servicios, Reservas)
-│       ├── ventas_caja/        # Por implementar
+│       ├── ventas_caja/        # CU20 Registrar Venta, CU21 Caja y CU29 Pasarela de pago
 │       ├── inventario_compras/ # Por implementar
 │       └── reportes/           # Por implementar
 │
