@@ -76,7 +76,7 @@ public class LiquidacionService {
         // Calcular Productos
         for (DetalleNotaVenta dnv : productos) {
             // Usamos la comisión unitaria del producto * cantidad vendida
-            BigDecimal comision = dnv.getProducto().getComisionUnitaria()
+            BigDecimal comision = dnv.getComisionUnitaria()
                     .multiply(new BigDecimal(dnv.getCantidad()));
             
             totalProductos = totalProductos.add(comision);
@@ -128,7 +128,7 @@ public class LiquidacionService {
         // 3. Guardar Detalles (Productos)
         List<DetalleNotaVenta> productos = detalleNotaVentaRepository.buscarProductosNoLiquidados(empleadoId, inicio, fin);
         for (DetalleNotaVenta dnv : productos) {
-            BigDecimal comision = dnv.getProducto().getComisionUnitaria().multiply(new BigDecimal(dnv.getCantidad()));
+            BigDecimal comision = dnv.getComisionUnitaria().multiply(new BigDecimal(dnv.getCantidad()));
             detallePagoRepository.save(DetallePagoEmpleado.builder()
                     .pago(pago).detalleNotaVenta(dnv).montoComision(comision).build());
         }

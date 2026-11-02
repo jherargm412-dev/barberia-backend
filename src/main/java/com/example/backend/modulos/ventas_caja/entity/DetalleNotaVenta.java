@@ -1,6 +1,7 @@
 package com.example.backend.modulos.ventas_caja.entity;
 
 import com.example.backend.modulos.inventario_compras.entity.Producto;
+import com.example.backend.modulos.seguridad_usuarios.entity.Empleado;
 import jakarta.persistence.*;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
@@ -28,6 +29,15 @@ public class DetalleNotaVenta {
     @ManyToOne(fetch = FetchType.LAZY, optional = false)
     @JoinColumn(name = "producto_id", nullable = false)
     private Producto producto;
+
+    /** Beneficiario explícito de la comisión. Null: venta sin comisión de barbero. */
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "empleado_id")
+    private Empleado empleado;
+
+    /** Importe por unidad congelado al vender; no cambia al editar el catálogo. */
+    @Column(name = "comision_unitaria", nullable = false, precision = 10, scale = 2)
+    private BigDecimal comisionUnitaria = BigDecimal.ZERO;
 
     @Column(name = "cantidad", nullable = false)
     private Integer cantidad;

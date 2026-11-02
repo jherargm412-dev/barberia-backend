@@ -21,6 +21,7 @@ public class ProductoMapper {
             .descripcion(requestDTO.descripcion())
             .costo(requestDTO.costo())
             .precioVenta(requestDTO.precioVenta())
+            .comisionUnitaria(requestDTO.comisionUnitaria() == null ? java.math.BigDecimal.ZERO : requestDTO.comisionUnitaria())
             .stockMinimo(requestDTO.stockMinimo())
             .stockActual(0)
             .activo(true)
@@ -39,7 +40,8 @@ public class ProductoMapper {
                 entity.getPrecioVenta(),
                 entity.getStockMinimo(),
                 entity.getStockActual(),
-                entity.isActivo()
+                entity.isActivo(),
+                entity.getComisionUnitaria()
         );
     }
 

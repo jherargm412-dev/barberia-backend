@@ -10,7 +10,7 @@ import java.util.List;
 public interface DetalleNotaVentaRepository extends JpaRepository<DetalleNotaVenta, Integer> {
 
     @Query("SELECT dnv FROM DetalleNotaVenta dnv " +
-           "WHERE dnv.notaVenta.idNotaVenta IN (SELECT ds.notaVenta.idNotaVenta FROM DetalleServicio ds WHERE ds.empleado.idEmpleado = :empleadoId) " +
+           "WHERE dnv.empleado.idEmpleado = :empleadoId AND dnv.notaVenta.estado = 'PAGADA' " +
            "AND dnv.notaVenta.fecha BETWEEN :inicio AND :fin " +
            "AND dnv.idDetalleNotaVenta NOT IN (SELECT dpe.detalleNotaVenta.idDetalleNotaVenta FROM DetallePagoEmpleado dpe WHERE dpe.detalleNotaVenta IS NOT NULL)")
     List<DetalleNotaVenta> buscarProductosNoLiquidados(

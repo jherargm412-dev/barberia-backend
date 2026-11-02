@@ -97,6 +97,8 @@ public class ProductoService {
         productoExistente.setDescripcion(datos.descripcion());
         productoExistente.setCosto(datos.costo());
         productoExistente.setPrecioVenta(datos.precioVenta());
+        // Los clientes anteriores que omiten el campo conservan la comisión configurada.
+        if (datos.comisionUnitaria() != null) productoExistente.setComisionUnitaria(datos.comisionUnitaria());
         productoExistente.setStockMinimo(datos.stockMinimo());
 
         Producto productoActualizado = productoRepository.save(productoExistente);
@@ -257,11 +259,17 @@ public class ProductoService {
         if (request.costo().compareTo(BigDecimal.ZERO) < 0) invalidos.put("costo", "no puede ser negativo");
         if (precioVenta.compareTo(BigDecimal.ZERO) < 0) invalidos.put("precioVenta", "no puede ser negativo");
         if (request.stockMinimo() < 0) invalidos.put("stockMinimo", "no puede ser negativo");
+        BigDecimal comision = request.comisionUnitaria();
+        if (comision != null && (comision.signum() < 0 || comision.compareTo(new BigDecimal("99999999.99")) > 0
+                || comision.stripTrailingZeros().scale() > 2)) {
+            invalidos.put("comisionUnitaria", "debe ser un monto no negativo con máximo 2 decimales");
+        }
+        if (TIPO_INSUMO.equals(tipo)) comision = BigDecimal.ZERO;
         if (!invalidos.isEmpty()) {
             throw new ValidacionNegocioException("Revise los datos ingresados", invalidos);
         }
 
-        return new ProductoRequestDTO(tipo, nombre, descripcion, request.costo(), precioVenta, request.stockMinimo());
+        return new ProductoRequestDTO(tipo, nombre, descripcion, request.costo(), precioVenta, request.stockMinimo(), comision);
     }
 
     // Quita espacios extremos; si el texto queda vacío devuelve null

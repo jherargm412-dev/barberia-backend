@@ -95,8 +95,12 @@ public class VentaService {
                 .filter(p -> p.isActivo() && TIPO_VENTA.equals(p.getTipo())).toList();
         List<PasarelaPago> disponibles = metodosPago.findAll(Sort.by("idMetodoPago")).stream()
                 .filter(this::metodoDisponible).toList();
-        return mapper.opciones(caja != null, caja == null ? null : caja.getIdCaja(),
+        OpcionesFormularioVenta opciones = mapper.opciones(caja != null, caja == null ? null : caja.getIdCaja(),
                 servicios.findByActivoTrueOrderByNombreAsc(), productosVenta, disponibles);
+        return new OpcionesFormularioVenta(opciones.cajaAbierta(), opciones.cajaId(), opciones.servicios(),
+                opciones.productos(), opciones.metodosPago(), reservas.barberosActivos(Rol.BARBERO).stream()
+                .filter(e -> e.getUsuario().estaActivo() && e.getUsuario().tieneRol(Rol.BARBERO))
+                .map(e -> new OpcionesFormularioVenta.BarberoVendedor(e.getIdEmpleado(), e.getUsuario().getNombre())).toList());
     }
 
     /** Cita, cliente y anticipo que la pantalla precarga para cobrar una reserva. */
@@ -179,6 +183,8 @@ public class VentaService {
             detalle.setPrecioUnitario(linea.producto().getPrecioVenta());
             detalle.setSubTotal(linea.subTotal());
             detalle.setDescripcion(linea.descripcion());
+            detalle.setEmpleado(linea.empleado());
+            detalle.setComisionUnitaria(linea.comision());
             venta.agregarProducto(detalle);
             linea.producto().setStockActual(linea.producto().getStockActual() - linea.cantidad());
         }
@@ -344,7 +350,16 @@ public class VentaService {
                     ? null : linea.descripcion().trim();
             BigDecimal subtotal = producto.getPrecioVenta().multiply(BigDecimal.valueOf(linea.cantidad()))
                     .setScale(2, RoundingMode.UNNECESSARY);
-            lineasProductos.add(new ProductoPreparado(producto, linea.cantidad(), descripcion, subtotal));
+            Empleado vendedor = null;
+            if (linea.empleadoId() != null) {
+                vendedor = empleados.findById(linea.empleadoId())
+                        .filter(e -> e.getUsuario().estaActivo() && e.getUsuario().tieneRol(Rol.BARBERO))
+                        .orElseThrow(() -> new ValidacionNegocioException("Seleccione un barbero vendedor habilitado"));
+            }
+            BigDecimal comisionProducto = vendedor != null && vendedor.getTipoContrato() == TipoContrato.COMISIONISTA
+                    ? Objects.requireNonNullElse(producto.getComisionUnitaria(), CERO) : CERO;
+            lineasProductos.add(new ProductoPreparado(producto, linea.cantidad(), descripcion, subtotal,
+                    vendedor, comisionProducto));
         }
 
         BigDecimal subtotal = lineasServicios.stream().map(ServicioPreparado::precio)
@@ -464,7 +479,8 @@ public class VentaService {
     }
 
     private record ServicioPreparado(Servicio servicio, Empleado empleado, BigDecimal precio, BigDecimal comision) {}
-    private record ProductoPreparado(Producto producto, int cantidad, String descripcion, BigDecimal subTotal) {}
+    private record ProductoPreparado(Producto producto, int cantidad, String descripcion, BigDecimal subTotal,
+                                     Empleado empleado, BigDecimal comision) {}
     private record PagoPreparado(PasarelaPago metodo, String medioPago, BigDecimal monto,
                                  MovimientoCaja movimientoTarjeta) {}
     private record VentaContext(Cliente cliente, Reserva reserva, List<ServicioPreparado> servicios,

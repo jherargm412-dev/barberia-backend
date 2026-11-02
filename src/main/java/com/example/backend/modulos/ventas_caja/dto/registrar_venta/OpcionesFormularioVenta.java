@@ -8,8 +8,14 @@ public record OpcionesFormularioVenta(
         Integer cajaId,
         List<ServicioOpcion> servicios,
         List<ProductoOpcion> productos,
-        List<MetodoPagoOpcion> metodosPago
+        List<MetodoPagoOpcion> metodosPago,
+        List<BarberoVendedor> barberosVendedores
 ) {
+    public OpcionesFormularioVenta(boolean cajaAbierta, Integer cajaId, List<ServicioOpcion> servicios,
+            List<ProductoOpcion> productos, List<MetodoPagoOpcion> metodosPago) {
+        this(cajaAbierta, cajaId, servicios, productos, metodosPago, List.of());
+    }
+    public record BarberoVendedor(Integer idEmpleado, String nombre) {}
     public record ServicioOpcion(Integer id, String nombre, String descripcion, BigDecimal precio,
                                  BigDecimal porcentajeComision) {}
     public record ProductoOpcion(Integer id, String nombre, String descripcion, BigDecimal precioVenta,

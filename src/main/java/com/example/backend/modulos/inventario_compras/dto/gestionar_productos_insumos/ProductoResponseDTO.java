@@ -11,5 +11,6 @@ public record ProductoResponseDTO(
     BigDecimal precioVenta,
     Integer stockMinimo,
     Integer stockActual,
-    boolean activo
+    boolean activo,
+    BigDecimal comisionUnitaria
 ) {}

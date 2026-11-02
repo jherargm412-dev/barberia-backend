@@ -12,5 +12,6 @@ public record ProductoRequestDTO(
     String descripcion,
     BigDecimal costo,
     BigDecimal precioVenta,
-    Integer stockMinimo
+    Integer stockMinimo,
+    BigDecimal comisionUnitaria
 ) {}

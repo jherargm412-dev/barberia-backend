@@ -8,21 +8,22 @@ import java.math.BigDecimal;
 
 @Entity
 @Table(name = "detalle_pago_empleado")
-@IdClass(DetallePagoEmpleadoId.class)
 @Getter @Setter @NoArgsConstructor @AllArgsConstructor @Builder
 public class DetallePagoEmpleado {
 
     @Id
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
+    @Column(name = "id_detalle_pago")
+    private Integer idDetallePago;
+
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "pago_id")
     private PagoEmpleado pago;
 
-    @Id
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "detalle_servicio_id")
     private DetalleServicio detalleServicio;
 
-    @Id
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "detalle_nota_venta_id")
     private DetalleNotaVenta detalleNotaVenta;

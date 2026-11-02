@@ -11,7 +11,7 @@ public interface DetalleServicioRepository extends JpaRepository<DetalleServicio
     
     @Query("SELECT ds FROM DetalleServicio ds " +
            "WHERE ds.empleado.idEmpleado = :empleadoId " +
-           "AND ds.estado = 'REALIZADO' " +
+           "AND ds.estado = 'REALIZADO' AND ds.notaVenta.estado = 'PAGADA' " +
            "AND ds.notaVenta.fecha BETWEEN :inicio AND :fin " +
            "AND ds.idDetalleServicio NOT IN (SELECT dpe.detalleServicio.idDetalleServicio FROM DetallePagoEmpleado dpe WHERE dpe.detalleServicio IS NOT NULL)")
     List<DetalleServicio> buscarServiciosNoLiquidados(

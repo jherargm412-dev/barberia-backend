@@ -9,7 +9,7 @@ import lombok.NoArgsConstructor;
 import lombok.Setter;
 
 // Se mapea a la tabla producto del Script.sql (migración V18).
-// La columna comision_unitaria existe en la BD pero CU22 no la usa: toma su DEFAULT 0.
+// CU19/CU20: comisión por unidad, que se congela en el detalle al registrar la venta.
 @Getter
 @Setter
 @NoArgsConstructor
@@ -44,8 +44,9 @@ public class Producto {
     @Column(nullable = false)
     private BigDecimal costo;
 
-    @Column(name = "comision_unitaria")
-    private BigDecimal comisionUnitaria;
+    @Builder.Default
+    @Column(name = "comision_unitaria", nullable = false)
+    private BigDecimal comisionUnitaria = BigDecimal.ZERO;
 
     @Column(nullable = false)
     private String tipo; // 'VENTA' (producto) o 'INSUMO'

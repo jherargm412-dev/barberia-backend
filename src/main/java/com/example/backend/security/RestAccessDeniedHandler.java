@@ -38,6 +38,7 @@ public class RestAccessDeniedHandler implements AccessDeniedHandler {
         MENSAJES_POR_RUTA.put("/api/v1/horarios", MENSAJE_HORARIOS);
         MENSAJES_POR_RUTA.put("/api/v1/caja", MENSAJE_CAJA);
         MENSAJES_POR_RUTA.put("/api/v1/agenda", MENSAJE_AGENDA);
+        MENSAJES_POR_RUTA.put("/api/v1/comisiones", "No tiene permiso para consultar comisiones");
     }
 
     private final ObjectMapper objectMapper;
