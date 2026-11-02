@@ -44,6 +44,9 @@ public class Producto {
     @Column(nullable = false)
     private BigDecimal costo;
 
+    @Column(name = "comision_unitaria")
+    private BigDecimal comisionUnitaria;
+
     @Column(nullable = false)
     private String tipo; // 'VENTA' (producto) o 'INSUMO'
 }
