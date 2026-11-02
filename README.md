@@ -2,6 +2,9 @@
 
 API REST en Spring Boot 4 + PostgreSQL + Flyway + JWT.
 
+Despliegue en Render desde `main` de ambos repositorios: ver
+[docs/render.md](docs/render.md) y [`render.yaml`](render.yaml).
+
 ## Requisitos
 
 - **Java 21** o superior
