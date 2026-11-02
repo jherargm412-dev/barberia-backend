@@ -154,14 +154,9 @@ class VentaControllerIT extends IntegracionBaseTest {
         var resultado = mockMvc.perform(post("/api/v1/productos").header("Authorization", bearer(token))
                         .contentType("application/json")
                         .content(json(Map.of("tipo", "VENTA", "nombre", "Producto CU20", "costo", 2,
-                                "precioVenta", 5, "stockMinimo", 1))))
+                                "precioVenta", 5, "stockMinimo", 1, "stockInicial", 5))))
                 .andExpect(status().isCreated()).andReturn();
-        int id = leer(resultado).get("producto").get("idProducto").asInt();
-        mockMvc.perform(post("/api/v1/productos/" + id + "/ajustes").header("Authorization", bearer(token))
-                        .contentType("application/json")
-                        .content(json(Map.of("tipo", "INVENTARIO_INICIAL", "cantidad", 5))))
-                .andExpect(status().isCreated());
-        return id;
+        return leer(resultado).get("producto").get("idProducto").asInt();
     }
 
     private Map<String, Integer> metodosPago(String token) throws Exception {

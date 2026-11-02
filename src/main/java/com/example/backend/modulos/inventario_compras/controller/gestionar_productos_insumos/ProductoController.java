@@ -25,11 +25,15 @@ import com.example.backend.modulos.inventario_compras.service.gestionar_producto
 import com.example.backend.security.UsuarioAutenticado;
 
 // CU22: el actor es el Administrador, que es el único rol con PRODUCTO_GESTIONAR (V2).
+// La Recepcionista tiene PRODUCTO_CONSULTAR (V2): solo puede ver el catálogo y el stock.
 // No existe DELETE: los ítems solo se deshabilitan.
 @RestController
 @RequestMapping("/api/v1/productos")
 @PreAuthorize("hasAuthority('PRODUCTO_GESTIONAR')")
 public class ProductoController {
+
+    // La anotación del método reemplaza a la de la clase en estas consultas
+    private static final String PUEDE_CONSULTAR = "hasAnyAuthority('PRODUCTO_GESTIONAR', 'PRODUCTO_CONSULTAR')";
 
     private final ProductoService productoService;
 
@@ -40,6 +44,7 @@ public class ProductoController {
 
     // 1. GET: Listar todo el catálogo de ítems
     @GetMapping
+    @PreAuthorize(PUEDE_CONSULTAR)
     public ResponseEntity<List<ProductoResponseDTO>> listarInventario() {
         List<ProductoResponseDTO> productos = productoService.listarInventario();
         return ResponseEntity.ok(productos);
@@ -47,8 +52,9 @@ public class ProductoController {
 
     // 2. POST: Registrar un nuevo ítem
     @PostMapping
-    public ResponseEntity<RespuestaProducto> registrarProducto(@RequestBody ProductoRequestDTO requestDTO) {
-        RespuestaProducto respuesta = productoService.registrarProducto(requestDTO);
+    public ResponseEntity<RespuestaProducto> registrarProducto(@RequestBody ProductoRequestDTO requestDTO,
+                                                               @AuthenticationPrincipal UsuarioAutenticado actor) {
+        RespuestaProducto respuesta = productoService.registrarProducto(requestDTO, actor);
         return ResponseEntity.status(HttpStatus.CREATED).body(respuesta);
     }
 
@@ -56,13 +62,15 @@ public class ProductoController {
     @PutMapping("/{id}")
     public ResponseEntity<RespuestaProducto> modificarProducto(
             @PathVariable Integer id,
-            @RequestBody ProductoRequestDTO requestDTO) {
-        RespuestaProducto respuesta = productoService.modificarProducto(id, requestDTO);
+            @RequestBody ProductoRequestDTO requestDTO,
+            @AuthenticationPrincipal UsuarioAutenticado actor) {
+        RespuestaProducto respuesta = productoService.modificarProducto(id, requestDTO, actor);
         return ResponseEntity.ok(respuesta);
     }
 
     // 4. GET: Consultar un ítem por su ID
     @GetMapping("/{id}")
+    @PreAuthorize(PUEDE_CONSULTAR)
     public ResponseEntity<ProductoResponseDTO> obtenerProducto(@PathVariable Integer id) {
         ProductoResponseDTO producto = productoService.obtenerProducto(id);
         return ResponseEntity.ok(producto);
@@ -72,8 +80,9 @@ public class ProductoController {
     @PatchMapping("/{id}/estado")
     public ResponseEntity<RespuestaProducto> cambiarEstado(
             @PathVariable Integer id,
-            @RequestBody CambiarEstadoProductoRequest peticion) {
-        RespuestaProducto respuesta = productoService.cambiarEstado(id, peticion.activo());
+            @RequestBody CambiarEstadoProductoRequest peticion,
+            @AuthenticationPrincipal UsuarioAutenticado actor) {
+        RespuestaProducto respuesta = productoService.cambiarEstado(id, peticion.activo(), actor);
         return ResponseEntity.ok(respuesta);
     }
 
@@ -83,7 +92,7 @@ public class ProductoController {
             @PathVariable Integer id,
             @RequestBody AjusteStockRequestDTO peticion,
             @AuthenticationPrincipal UsuarioAutenticado actor) {
-        RespuestaProducto respuesta = productoService.ajustarStock(id, peticion, actor.idUsuario());
+        RespuestaProducto respuesta = productoService.ajustarStock(id, peticion, actor);
         return ResponseEntity.status(HttpStatus.CREATED).body(respuesta);
     }
 
