@@ -162,6 +162,7 @@ public class CompraService {
             detalle.setDescuento(linea.descuento());
             detalle.setSubTotal(linea.subTotal());
             nota.agregarDetalle(detalle);
+            producto.setCostoPromedio(costoPromedio(producto, linea));
             producto.setStockActual(producto.getStockActual() + linea.cantidad());
         }
 
@@ -272,6 +273,17 @@ public class CompraService {
             throw new ValidacionNegocioException("El total supera el máximo permitido", Map.of("detalles", "total muy alto"));
         }
         return new Datos(request.proveedorId(), request.metodoPagoId(), nroFact, fecha, lineas, total);
+    }
+
+    /**
+     * Promedio ponderado: (stock actual x costo promedio + subtotal de la línea) / (stock actual + cantidad).
+     * El subtotal ya descuenta el descuento de la línea. Sin stock previo, el promedio es el costo de esta compra.
+     */
+    private static BigDecimal costoPromedio(Producto producto, Linea linea) {
+        BigDecimal stockAnterior = BigDecimal.valueOf(producto.getStockActual());
+        BigDecimal valorAnterior = stockAnterior.multiply(producto.getCostoPromedio());
+        BigDecimal unidades = stockAnterior.add(BigDecimal.valueOf(linea.cantidad()));
+        return valorAnterior.add(linea.subTotal()).divide(unidades, 2, RoundingMode.HALF_UP);
     }
 
     /** Importe >= 0 con hasta 2 decimales dentro de NUMERIC(10,2); null si no es válido. */

@@ -45,6 +45,10 @@ public class Producto {
     private BigDecimal costo;
 
     @Builder.Default
+    @Column(name = "costo_promedio", nullable = false)
+    private BigDecimal costoPromedio = BigDecimal.ZERO;
+
+    @Builder.Default
     @Column(name = "comision_unitaria", nullable = false)
     private BigDecimal comisionUnitaria = BigDecimal.ZERO;
 

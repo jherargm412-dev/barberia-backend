@@ -20,6 +20,8 @@ public class ProductoMapper {
             .nombre(requestDTO.nombre())
             .descripcion(requestDTO.descripcion())
             .costo(requestDTO.costo())
+            // Sin compras registradas, el costo promedio parte del costo indicado en el alta.
+            .costoPromedio(requestDTO.costo())
             .precioVenta(requestDTO.precioVenta())
             .comisionUnitaria(requestDTO.comisionUnitaria() == null ? java.math.BigDecimal.ZERO : requestDTO.comisionUnitaria())
             .stockMinimo(requestDTO.stockMinimo())
@@ -41,7 +43,8 @@ public class ProductoMapper {
                 entity.getStockMinimo(),
                 entity.getStockActual(),
                 entity.isActivo(),
-                entity.getComisionUnitaria()
+                entity.getComisionUnitaria(),
+                entity.getCostoPromedio()
         );
     }
 
