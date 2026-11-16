@@ -97,7 +97,6 @@ public class ReservaService {
     public static final String RESERVA_ATENDER = "RESERVA_ATENDER";
     public static final String RESERVA_NO_ASISTIO = "RESERVA_NO_ASISTIO";
     public static final String RESERVA_CANCELAR = "RESERVA_CANCELAR";
-    public static final String TABLA_RESERVA = "reserva";
 
     private static final DateTimeFormatter HORA = DateTimeFormatter.ofPattern("HH:mm");
     private static final DateTimeFormatter FECHA = DateTimeFormatter.ofPattern("dd/MM/yyyy");
@@ -209,7 +208,7 @@ public class ReservaService {
             reserva.setMontoAnticipo(servicio.getPrecio().multiply(PORCENTAJE_ANTICIPO).setScale(2, RoundingMode.HALF_UP));
             reserva.setFechaRegistro(ahora());
             Reserva guardada = reservaRepository.saveAndFlush(reserva);
-            bitacoraService.registrar(referenciaActor(actor), RESERVA_CREAR, TABLA_RESERVA,
+            bitacoraService.registrar(referenciaActor(actor), RESERVA_CREAR, Reserva.NOMBRE_TABLA,
                     "Cita #" + guardada.getIdReserva() + " de '" + cliente.getNombre() + "' el "
                             + describirHorario(guardada) + " (" + guardada.getCanal() + ")",
                     null, snapshot(guardada));
@@ -263,7 +262,7 @@ public class ReservaService {
             reserva.setHoraInicio(peticion.horaInicio());
             reserva.setHoraFin(peticion.horaFin());
             Reserva guardada = reservaRepository.saveAndFlush(reserva);
-            bitacoraService.registrar(referenciaActor(actor), RESERVA_REPROGRAMAR, TABLA_RESERVA,
+            bitacoraService.registrar(referenciaActor(actor), RESERVA_REPROGRAMAR, Reserva.NOMBRE_TABLA,
                     "Cita #" + id + ": " + horarioAnterior + " → " + describirHorario(guardada),
                     antes, snapshot(guardada));
             return mapper.aResponse(guardada);
@@ -324,7 +323,7 @@ public class ReservaService {
         return guardando(() -> {
             reserva.setEstado(destino);
             Reserva guardada = reservaRepository.saveAndFlush(reserva);
-            bitacoraService.registrar(referenciaActor(actor), accion, TABLA_RESERVA,
+            bitacoraService.registrar(referenciaActor(actor), accion, Reserva.NOMBRE_TABLA,
                     "Cita #" + id + " de '" + guardada.getCliente().getNombre() + "': " + anterior + " → " + destino
                             + nota,
                     Map.of("idReserva", id, "estado", anterior),
@@ -434,7 +433,7 @@ public class ReservaService {
 
     /**
      * Igual que {@link #buscar}, pero bloqueando la fila hasta el fin de la transacción: si a la vez se cobra el
-     * anticipo (CU14) o vence la cita web (CU12), uno espera al otro y ve el estado ya actualizado.
+     * anticipo (CU14) o vence la cita web (CU15), uno espera al otro y ve el estado ya actualizado.
      */
     private Reserva buscarBloqueada(Integer id) {
         reservaRepository.bloquear(id).orElseThrow(() -> new RecursoNoEncontradoException("Cita no encontrada: " + id));
