@@ -1,7 +1,7 @@
 package com.example.backend.modulos.servicios_reservas;
 
 import com.example.backend.modulos.seguridad_usuarios.entity.Bitacora;
-import com.example.backend.modulos.servicios_reservas.service.solicitar_cita.VencimientoSolicitudesService;
+import com.example.backend.modulos.servicios_reservas.service.cancelar_reserva_no_pago.VencimientoSolicitudesService;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;

@@ -16,7 +16,7 @@ import java.time.LocalDateTime;
 @Component
 public class ReservaMapper {
 
-    /** Plazo para pagar el anticipo de una cita web (CU12); el mismo que usa VencimientoSolicitudesService. */
+    /** Plazo que CU12 muestra al cliente y CU15 aplica para vencer una reserva web sin pagar. */
     @Value("${app.citas.web.minutos-para-pagar:30}")
     private long minutosParaPagar;
 
