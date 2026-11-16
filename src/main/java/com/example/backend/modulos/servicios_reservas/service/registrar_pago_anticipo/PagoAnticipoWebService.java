@@ -22,7 +22,7 @@ import com.example.backend.modulos.servicios_reservas.mapper.gestionar_citas.Res
 import com.example.backend.modulos.servicios_reservas.mapper.registrar_pago_anticipo.PagoAnticipoMapper;
 import com.example.backend.modulos.servicios_reservas.repository.PagoAnticipoRepository;
 import com.example.backend.modulos.servicios_reservas.repository.ReservaRepository;
-import com.example.backend.modulos.servicios_reservas.service.solicitar_cita.ActorReservasWeb;
+import com.example.backend.modulos.servicios_reservas.service.ActorReservasWeb;
 import com.example.backend.modulos.servicios_reservas.service.solicitar_cita.ReservaInvitadoService;
 import com.example.backend.modulos.ventas_caja.entity.Caja;
 import com.example.backend.modulos.ventas_caja.entity.PasarelaPago;

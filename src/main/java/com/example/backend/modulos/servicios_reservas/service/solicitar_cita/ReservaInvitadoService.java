@@ -1,5 +1,6 @@
 package com.example.backend.modulos.servicios_reservas.service.solicitar_cita;
 
+import com.example.backend.modulos.servicios_reservas.service.ActorReservasWeb;
 import com.example.backend.exception.RecursoNoEncontradoException;
 import com.example.backend.exception.ValidacionNegocioException;
 import com.example.backend.modulos.seguridad_usuarios.audit.BitacoraService;
