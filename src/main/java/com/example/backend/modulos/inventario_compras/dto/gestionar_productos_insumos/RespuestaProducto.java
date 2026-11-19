@@ -19,6 +19,22 @@ public record RespuestaProducto(String mensaje, ProductoResponseDTO producto) {
         return new RespuestaProducto("Ítem deshabilitado", producto);
     }
 
+    public static RespuestaProducto publicado(ProductoResponseDTO producto) {
+        return new RespuestaProducto("Producto visible en el catálogo", producto);
+    }
+
+    public static RespuestaProducto ocultado(ProductoResponseDTO producto) {
+        return new RespuestaProducto("Producto oculto del catálogo", producto);
+    }
+
+    public static RespuestaProducto imagenGuardada(ProductoResponseDTO producto) {
+        return new RespuestaProducto("Imagen actualizada", producto);
+    }
+
+    public static RespuestaProducto imagenQuitada(ProductoResponseDTO producto) {
+        return new RespuestaProducto("Imagen eliminada", producto);
+    }
+
     public static RespuestaProducto stockAjustado(ProductoResponseDTO producto) {
         return new RespuestaProducto("Stock actualizado", producto);
     }

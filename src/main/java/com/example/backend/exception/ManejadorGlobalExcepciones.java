@@ -14,6 +14,8 @@ import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 import org.springframework.web.method.annotation.MethodArgumentTypeMismatchException;
+import org.springframework.web.multipart.MaxUploadSizeExceededException;
+import org.springframework.web.multipart.MultipartException;
 import org.springframework.web.servlet.resource.NoResourceFoundException;
 import tools.jackson.core.JacksonException;
 import tools.jackson.databind.exc.MismatchedInputException;
@@ -136,6 +138,18 @@ public class ManejadorGlobalExcepciones {
     @ExceptionHandler(HttpRequestMethodNotSupportedException.class)
     public ResponseEntity<ErrorApi> metodoNoPermitido(HttpRequestMethodNotSupportedException ex, HttpServletRequest req) {
         return responder(HttpStatus.METHOD_NOT_ALLOWED, "Método no permitido", req, null);
+    }
+
+    /** Archivo subido mayor que spring.servlet.multipart.max-file-size (imagen de producto, CU22). */
+    @ExceptionHandler(MaxUploadSizeExceededException.class)
+    public ResponseEntity<ErrorApi> archivoDemasiadoGrande(MaxUploadSizeExceededException ex, HttpServletRequest req) {
+        return responder(HttpStatus.BAD_REQUEST, "La imagen no puede superar 2 MB", req, Map.of("archivo", "máximo 2 MB"));
+    }
+
+    /** Petición que debía ser multipart y no lo es (o viene cortada). */
+    @ExceptionHandler(MultipartException.class)
+    public ResponseEntity<ErrorApi> multipartInvalido(MultipartException ex, HttpServletRequest req) {
+        return responder(HttpStatus.BAD_REQUEST, "Seleccione una imagen", req, Map.of("archivo", "obligatorio"));
     }
 
     @ExceptionHandler(Exception.class)

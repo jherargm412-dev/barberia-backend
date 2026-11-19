@@ -1,6 +1,8 @@
 package com.example.backend.modulos.inventario_compras.entity;
 
 import java.math.BigDecimal;
+import java.time.LocalDateTime;
+import java.time.ZoneId;
 import jakarta.persistence.*;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
@@ -50,4 +52,19 @@ public class Producto {
 
     @Column(nullable = false)
     private String tipo; // 'VENTA' (producto) o 'INSUMO'
+
+    // CU22/CU23 (V30): si se muestra en el catálogo público, aparte de estar activo
+    @Builder.Default
+    @Column(name = "en_catalogo", nullable = false)
+    private boolean enCatalogo = true;
+
+    // CU22/CU23 (V30): null = sin imagen; si no, cuándo se subió (versión para la caché del navegador)
+    @Column(name = "imagen_actualizada_en")
+    private LocalDateTime imagenActualizadaEn;
+
+    /** Versión de la imagen para armar su URL ({@code ?v=}); null si no tiene imagen. */
+    public Long versionImagen() {
+        return imagenActualizadaEn == null ? null
+                : imagenActualizadaEn.atZone(ZoneId.systemDefault()).toInstant().toEpochMilli();
+    }
 }

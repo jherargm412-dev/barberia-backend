@@ -17,6 +17,9 @@ public interface ProductoRepository extends JpaRepository<Producto, Integer> {
     // Listado del CU22 paso 2, ordenado por nombre
     List<Producto> findAllByOrderByNombreAsc();
 
+    // CU23: catálogo público, solo un tipo ('VENTA'), activos y publicados (en_catalogo), del más caro al más barato
+    List<Producto> findByTipoAndActivoTrueAndEnCatalogoTrueOrderByPrecioVentaDescNombreAsc(String tipo);
+
     // Ajustar stock: bloquea la fila hasta terminar la transacción para que dos ajustes
     // simultáneos no partan del mismo stock anterior
     @Lock(LockModeType.PESSIMISTIC_WRITE)

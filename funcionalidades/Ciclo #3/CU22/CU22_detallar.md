@@ -32,4 +32,21 @@
 - **Ajustar stock.** El administrador selecciona un ítem activo y presiona "Ajustar stock"; el sistema muestra el stock actual y los motivos: corrección por sobrante (suma), corrección por faltante, pérdida o vencido (restan). El administrador elige el motivo, la cantidad y, si es una corrección, la observación obligatoria; el sistema guarda el ajuste con el stock anterior y el nuevo, quién lo hizo y la fecha, y muestra "Stock actualizado".
   - Si la cantidad que se resta supera el stock actual, el sistema muestra "La cantidad supera el stock actual" y no guarda.
   - Si el ítem está deshabilitado, el sistema muestra "El ítem está deshabilitado; habilítelo para ajustar su stock".
-- Todas las operaciones (registrar, modificar, habilitar, deshabilitar y ajustar stock) quedan en la bitácora.
+- **Gestionar catálogo (solo productos de VENTA).** El administrador presiona "Catálogo e imagen" en un producto de venta; el sistema muestra la imagen actual y el interruptor "Mostrar en el catálogo público" (CU23).
+  - **Subir / reemplazar imagen.** Elige un archivo JPG, PNG o WebP de hasta 2 MB; el sistema verifica el formato por el contenido del archivo (no por su nombre), lo guarda y muestra "Imagen actualizada". Hay una sola imagen por producto: subir otra reemplaza la anterior.
+  - **Quitar imagen.** El sistema la elimina y muestra "Imagen eliminada" (el producto no se borra).
+  - **Mostrar / ocultar.** Al apagar el interruptor el producto deja de verse en el catálogo público pero sigue activo para ventas y compras ("Producto oculto del catálogo"); al encenderlo vuelve a mostrarse ("Producto visible en el catálogo"). Un producto deshabilitado nunca aparece en el catálogo, esté o no marcado.
+  - Si el archivo no es una imagen válida: "La imagen debe ser JPG, PNG o WebP"; si supera 2 MB: "La imagen no puede superar 2 MB"; si el ítem es un insumo: "Solo los productos de venta se muestran en el catálogo".
+  - La recepcionista (PRODUCTO_CONSULTAR) ve la imagen y si está visible en el detalle, sin poder cambiarlos.
+- Todas las operaciones (registrar, modificar, habilitar, deshabilitar, ajustar stock, mostrar/ocultar en el catálogo y subir/quitar imagen) quedan en la bitácora.
+
+### Endpoints de catálogo (V30)
+
+| Método | Ruta | Permiso |
+|---|---|---|
+| `PATCH` | `/api/v1/productos/{id}/catalogo` `{"enCatalogo": true\|false}` | PRODUCTO_GESTIONAR |
+| `PUT` | `/api/v1/productos/{id}/imagen` (multipart, campo `archivo`) | PRODUCTO_GESTIONAR |
+| `DELETE` | `/api/v1/productos/{id}/imagen` | PRODUCTO_GESTIONAR |
+| `GET` | `/api/v1/productos/{id}/imagen` (vista previa del panel) | PRODUCTO_GESTIONAR o PRODUCTO_CONSULTAR |
+
+Las imágenes se guardan en la tabla `producto_imagen` (bytea) porque el disco de Railway se borra en cada despliegue. `producto.imagen_actualizada_en` sirve como versión (`?v=`) para que el navegador no muestre una imagen vieja.
