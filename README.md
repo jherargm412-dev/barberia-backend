@@ -145,7 +145,7 @@ barberia-backend/
 │       ├── gestion_empleados/  # Por implementar
 │       ├── servicios_reservas/ # CU08 (Catálogo de servicios, Reservas)
 │       ├── ventas_caja/        # CU20 Registrar Venta, CU21 Caja y CU29 Pasarela de pago
-│       ├── inventario_compras/ # Por implementar
+│       ├── inventario_compras/ # CU22 Productos, CU23 Catálogo público de productos, CU25 Compras
 │       └── reportes/           # Por implementar
 │
 ├── src/main/resources/

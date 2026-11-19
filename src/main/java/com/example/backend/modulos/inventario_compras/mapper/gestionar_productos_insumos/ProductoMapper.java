@@ -41,7 +41,9 @@ public class ProductoMapper {
                 entity.getStockMinimo(),
                 entity.getStockActual(),
                 entity.isActivo(),
-                entity.getComisionUnitaria()
+                entity.getComisionUnitaria(),
+                entity.isEnCatalogo(),
+                entity.versionImagen()
         );
     }
 

@@ -59,6 +59,9 @@ public class SecurityConfig {
                         .requestMatchers(HttpMethod.GET, "/actuator/health").permitAll()
                         // CU13: catálogo público de servicios, sin sesión.
                         .requestMatchers(HttpMethod.GET, "/api/v1/publico/servicios", "/api/v1/publico/servicios/*").permitAll()
+                        // CU23: catálogo público de productos, sin sesión.
+                        .requestMatchers(HttpMethod.GET, "/api/v1/publico/productos", "/api/v1/publico/productos/*",
+                                "/api/v1/publico/productos/*/imagen").permitAll()
                         // CU12 + CU14 sin cuenta: barberos, horas libres, solicitar la cita y, con el código de su enlace, verla y pagar.
                         .requestMatchers(HttpMethod.GET, "/api/v1/publico/servicios/*/barberos", "/api/v1/publico/disponibilidad",
                                 "/api/v1/publico/citas/*").permitAll()
