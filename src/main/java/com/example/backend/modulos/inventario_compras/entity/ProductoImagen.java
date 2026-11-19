@@ -9,7 +9,7 @@ import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
 
-// Tabla producto_imagen (V30): una imagen por producto. La sube el administrador (CU22)
+// Tabla producto_imagen (V31): una imagen por producto. La sube el administrador (CU22)
 // y la muestra el catálogo público (CU23). Va aparte de producto para no cargar los bytes al listar.
 @Getter
 @Setter

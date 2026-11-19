@@ -53,12 +53,12 @@ public class Producto {
     @Column(nullable = false)
     private String tipo; // 'VENTA' (producto) o 'INSUMO'
 
-    // CU22/CU23 (V30): si se muestra en el catálogo público, aparte de estar activo
+    // CU22/CU23 (V31): si se muestra en el catálogo público, aparte de estar activo
     @Builder.Default
     @Column(name = "en_catalogo", nullable = false)
     private boolean enCatalogo = true;
 
-    // CU22/CU23 (V30): null = sin imagen; si no, cuándo se subió (versión para la caché del navegador)
+    // CU22/CU23 (V31): null = sin imagen; si no, cuándo se subió (versión para la caché del navegador)
     @Column(name = "imagen_actualizada_en")
     private LocalDateTime imagenActualizadaEn;
 

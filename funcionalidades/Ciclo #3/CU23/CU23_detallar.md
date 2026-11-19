@@ -36,6 +36,6 @@
 | Service | `inventario_compras/service/consultar_catalogo_productos/ConsultarCatalogoProductosService` |
 | DTO | `ProductoCatalogo(idProducto, nombre, descripcion, precioVenta, disponible, imagenVersion)` |
 | Repository | `ProductoRepository.findByTipoAndActivoTrueAndEnCatalogoTrueOrderByPrecioVentaDescNombreAsc`, `ProductoImagenRepository` |
-| Migración | `V30__cu22_cu23_imagen_y_catalogo_producto.sql` (`producto.en_catalogo`, `producto.imagen_actualizada_en`, tabla `producto_imagen`) |
+| Migración | `V31__cu22_cu23_imagen_y_catalogo_producto.sql` (`producto.en_catalogo`, `producto.imagen_actualizada_en`, tabla `producto_imagen`) |
 | Pruebas | `ConsultarCatalogoProductosControllerIT`, `CatalogoProductoControllerIT` |
 | Frontend | Ruta pública `/catalogo/productos` → `inventario_compras/pages/consultar_catalogo_productos/ConsultarProductosPage` |

@@ -40,7 +40,7 @@
   - La recepcionista (PRODUCTO_CONSULTAR) ve la imagen y si está visible en el detalle, sin poder cambiarlos.
 - Todas las operaciones (registrar, modificar, habilitar, deshabilitar, ajustar stock, mostrar/ocultar en el catálogo y subir/quitar imagen) quedan en la bitácora.
 
-### Endpoints de catálogo (V30)
+### Endpoints de catálogo (V31)
 
 | Método | Ruta | Permiso |
 |---|---|---|
