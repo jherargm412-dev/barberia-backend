@@ -228,6 +228,7 @@ categoria(id_categoria),
  precio_venta NUMERIC(10,2) NOT NULL CHECK (precio_venta >=
 0),
  costo NUMERIC(10,2) NOT NULL CHECK (costo >= 0),
+ costo_promedio NUMERIC(10,2) NOT NULL DEFAULT 0 CHECK (costo_promedio >= 0),
  comision_unitaria NUMERIC(10,2) NOT NULL DEFAULT 0 CHECK
 (comision_unitaria >= 0),
  stock_actual INTEGER NOT NULL DEFAULT 0 CHECK

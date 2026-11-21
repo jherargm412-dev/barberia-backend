@@ -13,6 +13,7 @@ public record ProductoResponseDTO(
     Integer stockActual,
     boolean activo,
     BigDecimal comisionUnitaria,
+    BigDecimal costoPromedio,
     // Catálogo público (CU23): si se publica y la versión de su imagen (null = sin imagen)
     boolean enCatalogo,
     Long imagenVersion
