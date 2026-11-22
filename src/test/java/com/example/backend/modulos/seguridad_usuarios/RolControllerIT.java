@@ -68,7 +68,7 @@ class RolControllerIT extends IntegracionBaseTest {
                 .andExpect(jsonPath("$[0].nombre").value("Administrador"))
                 .andExpect(jsonPath("$[0].activo").value(true))
                 .andExpect(jsonPath("$[0].sistema").value(true))
-                .andExpect(jsonPath("$[0].permisos.length()").value(32))
+                .andExpect(jsonPath("$[0].permisos.length()").value(34))
                 .andExpect(jsonPath("$[0].cantidadUsuarios").value(1));
         mockMvc.perform(conToken(get(URL).param("activo", "false"), admin))
                 .andExpect(status().isOk())
@@ -76,17 +76,19 @@ class RolControllerIT extends IntegracionBaseTest {
     }
 
     @Test
-    @DisplayName("2. Catálogo de permisos: 34 en el orden de la semilla (30 + CU12, CU14 y pasarela de pago)")
+    @DisplayName("2. Catálogo de permisos: 36 en el orden de la semilla (30 + CU12, CU14, pasarela de pago y CU26)")
     void catalogoPermisos() throws Exception {
         mockMvc.perform(conToken(get("/api/v1/permisos"), tokenAdmin()))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.length()").value(34))
+                .andExpect(jsonPath("$.length()").value(36))
                 .andExpect(jsonPath("$[0].accion").value("USUARIO_GESTIONAR"))
                 .andExpect(jsonPath("$[29].accion").value("BITACORA_CONSULTAR"))
                 .andExpect(jsonPath("$[30].accion").value("RESERVA_SOLICITAR"))
                 .andExpect(jsonPath("$[31].accion").value("ANTICIPO_PAGAR_PROPIO"))
                 .andExpect(jsonPath("$[32].accion").value("PASARELA_PAGO_GESTIONAR"))
-                .andExpect(jsonPath("$[33].accion").value("PASARELA_PAGO_COBRAR"));
+                .andExpect(jsonPath("$[33].accion").value("PASARELA_PAGO_COBRAR"))
+                .andExpect(jsonPath("$[34].accion").value("INVENTARIO_CONSUMO_REGISTRAR"))
+                .andExpect(jsonPath("$[35].accion").value("INVENTARIO_MOVIMIENTO_CONSULTAR"));
     }
 
     @Test
@@ -242,7 +244,7 @@ class RolControllerIT extends IntegracionBaseTest {
         assertThat(bitacoraRepository.findByAccionOrderByIdBitacoraDesc("ROL_DESACTIVAR").getFirst().getDetalle())
                 .isEqualTo("Desactivación del rol 'Recepcionista' (1 usuarios afectados)");
         // Las filas de rol_permiso se conservan.
-        assertThat(rolRepository.findById(id).map(Rol::getPermisos).orElseThrow()).hasSize(18); // 17 de la semilla + PASARELA_PAGO_COBRAR (V22)
+        assertThat(rolRepository.findById(id).map(Rol::getPermisos).orElseThrow()).hasSize(20); // 17 de la semilla + PASARELA_PAGO_COBRAR (V22) + 2 de inventario (V32)
 
         mockMvc.perform(conToken(get("/api/v1/clientes"), recep)).andExpect(status().isForbidden());
         mockMvc.perform(conToken(get(URL).param("activo", "true"), admin))
