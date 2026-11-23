@@ -120,7 +120,7 @@ public interface ReservaRepository extends JpaRepository<Reserva, Integer>, JpaS
     Optional<Reserva> bloquear(@Param("id") Integer idReserva);
 
     /**
-     * CU12: ids de las citas web PENDIENTE, sin anticipo pagado, registradas antes de {@code limite} (ya vencieron).
+     * CU15: ids de las citas web PENDIENTE, sin anticipo pagado, registradas antes de {@code limite} (ya vencieron).
      * Solo los ids: cada una se bloquea y se vuelve a revisar antes de cancelarla, por si justo se pagó.
      */
     @Query("""

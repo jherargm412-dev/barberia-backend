@@ -1,10 +1,10 @@
-package com.example.backend.modulos.servicios_reservas.service.solicitar_cita;
+package com.example.backend.modulos.servicios_reservas.service.cancelar_reserva_no_pago;
 
+import com.example.backend.modulos.servicios_reservas.service.ActorReservasWeb;
 import com.example.backend.modulos.seguridad_usuarios.audit.BitacoraService;
 import com.example.backend.modulos.seguridad_usuarios.entity.Usuario;
 import com.example.backend.modulos.servicios_reservas.entity.Reserva;
 import com.example.backend.modulos.servicios_reservas.repository.ReservaRepository;
-import com.example.backend.modulos.servicios_reservas.service.gestionar_citas.ReservaService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
@@ -17,7 +17,7 @@ import java.time.LocalDateTime;
 import java.util.Map;
 
 /**
- * CU12: una cita web queda PENDIENTE hasta pagar el anticipo (CU14). Si el cliente no paga dentro del plazo
+ * CU15: una reserva web queda PENDIENTE hasta pagar el anticipo (CU14). Si el cliente no paga dentro del plazo
  * ({@code app.citas.web.minutos-para-pagar}), la cita se cancela sola y el horario del barbero se libera.
  * Así nadie bloquea la agenda sin pagar. Solo toca citas WEB: las de recepción (CU11) no vencen.
  */
@@ -54,7 +54,7 @@ public class VencimientoSolicitudesService {
             reservaRepository.save(r);
             // La bitácora exige un usuario: el cliente si reservó con su cuenta; si fue un invitado, "Reservas en línea".
             Usuario responsable = r.getCliente().getUsuario() != null ? r.getCliente().getUsuario() : actorReservasWeb.usuario();
-            bitacoraService.registrar(responsable, RESERVA_VENCER, ReservaService.TABLA_RESERVA,
+            bitacoraService.registrar(responsable, RESERVA_VENCER, Reserva.NOMBRE_TABLA,
                     "Cita #" + r.getIdReserva() + " cancelada: no se pagó el anticipo en " + minutosParaPagar + " minutos",
                     Map.of("idReserva", r.getIdReserva(), "estado", Reserva.PENDIENTE),
                     Map.of("idReserva", r.getIdReserva(), "estado", Reserva.CANCELADA));

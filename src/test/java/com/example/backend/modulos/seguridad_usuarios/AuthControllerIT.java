@@ -39,7 +39,7 @@ class AuthControllerIT extends IntegracionBaseTest {
         assertThat(usuario.get("correo").asString()).isEqualTo(ADMIN_CORREO);
         assertThat(usuario.get("roles")).hasSize(1);
         assertThat(usuario.get("roles").get(0).asString()).isEqualTo("Administrador");
-        assertThat(usuario.get("permisos")).hasSize(32); // 30 de la semilla + 2 de pasarela de pago (V22)
+        assertThat(usuario.get("permisos")).hasSize(35); // 30 de la semilla + 2 de pasarela de pago (V22) + 2 de inventario (V32) + VOZ_USAR (V33)
 
         assertThat(bitacoraRepository.countByAccion("INICIO_SESION")).isEqualTo(antes + 1);
         Bitacora b = bitacoraRepository.findByAccionOrderByIdBitacoraDesc("INICIO_SESION").getFirst();
@@ -168,12 +168,12 @@ class AuthControllerIT extends IntegracionBaseTest {
     }
 
     @Test
-    @DisplayName("Permisos efectivos del Barbero: exactamente los 4 de la matriz")
+    @DisplayName("Permisos efectivos del Barbero: exactamente los 5 de la matriz (4 + VOZ_USAR de CU28)")
     void permisosBarbero() throws Exception {
         crearUsuario(tokenAdmin(), barbero("barbero.permisos@houseofcut.bo", "Clave123!"));
         JsonNode usuario = leer(loginResultado("barbero.permisos@houseofcut.bo", "Clave123!")).get("usuario");
         assertThat(usuario.get("permisos").valueStream().map(JsonNode::asString).toList())
                 .containsExactlyInAnyOrder("PERFIL_EDITAR", "AGENDA_CONSULTAR_PROPIA",
-                        "SERVICIO_CONSULTAR", "COMISION_CONSULTAR_PROPIA");
+                        "SERVICIO_CONSULTAR", "COMISION_CONSULTAR_PROPIA", "VOZ_USAR");
     }
 }

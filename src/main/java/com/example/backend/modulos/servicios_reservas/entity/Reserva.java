@@ -15,7 +15,7 @@ import java.time.LocalTime;
 import java.util.List;
 
 /**
- * Cita de un cliente con un barbero para un servicio (CU11, CU12). Nunca se borra: cancelar o marcar
+ * Cita de un cliente con un barbero para un servicio (CU11, CU12, CU15). Nunca se borra: cancelar o marcar
  * la inasistencia cambia el estado, así se conserva la traza del anticipo para caja (CU14, CU21).
  */
 @Entity
@@ -24,6 +24,9 @@ import java.util.List;
 @Setter
 @NoArgsConstructor
 public class Reserva {
+
+    /** Nombre de la tabla compartido por los casos de uso que auditan cambios de reservas. */
+    public static final String NOMBRE_TABLA = "reserva";
 
     // Valores de la columna estado (CHECK de reserva.estado).
     public static final String PENDIENTE = "PENDIENTE";
@@ -87,7 +90,7 @@ public class Reserva {
     @Formula("(select count(*) > 0 from pago_anticipo p where p.reserva_id = id_reserva)")
     private boolean anticipoPagado;
 
-    /** Cuándo se registró la cita (hora de Bolivia). Sirve para vencer las citas web sin pagar (CU12). */
+    /** Cuándo se registró la cita (hora de Bolivia). Sirve para vencer las citas web sin pagar (CU15). */
     @Column(name = "fecha_registro", nullable = false, updatable = false)
     private LocalDateTime fechaRegistro;
 

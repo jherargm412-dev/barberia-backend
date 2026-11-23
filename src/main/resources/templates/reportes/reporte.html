@@ -1,0 +1,133 @@
+<!DOCTYPE html>
+<!--
+  Generar Reportes: plantilla única para todos los reportes, en HTML y en PDF.
+  Va escrita como XHTML (todas las etiquetas cerradas, sin &nbsp;) porque el conversor a PDF (OpenHTMLtoPDF)
+  la lee como XML. Variables: r (ReporteResponse), fmt (FormatoReporte), negocio, paraPdf.
+-->
+<html xmlns="http://www.w3.org/1999/xhtml" xmlns:th="http://www.thymeleaf.org" lang="es">
+<head>
+    <meta charset="UTF-8"/>
+    <meta name="viewport" content="width=device-width, initial-scale=1"/>
+    <title th:text="${r.titulo + ' - ' + negocio}">Reporte</title>
+    <style>
+        @page {
+            size: A4 landscape;
+            margin: 14mm 12mm 16mm 12mm;
+            @bottom-left { content: "Generado por el sistema de la barbería"; font-family: Helvetica, Arial, sans-serif; font-size: 8pt; color: #777777; }
+            @bottom-right { content: "Página " counter(page) " de " counter(pages); font-family: Helvetica, Arial, sans-serif; font-size: 8pt; color: #777777; }
+        }
+        body { font-family: Helvetica, Arial, sans-serif; font-size: 9.5pt; color: #1f2328; margin: 0; }
+        body.pantalla { max-width: 1200px; margin: 24px auto; padding: 0 24px; }
+        .encabezado { border-bottom: 2px solid #1f2328; padding-bottom: 8px; margin-bottom: 12px; }
+        .negocio { font-size: 9pt; letter-spacing: 1px; text-transform: uppercase; color: #555555; }
+        h1 { font-size: 18pt; margin: 2px 0 2px 0; }
+        h2 { font-size: 12pt; margin: 18px 0 4px 0; }
+        .descripcion { color: #555555; margin: 0; }
+        .meta { width: 100%; margin-top: 8px; border-collapse: collapse; }
+        .meta td { padding: 2px 12px 2px 0; vertical-align: top; font-size: 9pt; }
+        .meta .etiqueta { color: #555555; white-space: nowrap; }
+        .indicadores { width: 100%; border-collapse: separate; border-spacing: 6px 0; margin: 10px -6px 4px -6px; }
+        .indicador { border: 1px solid #d0d7de; border-radius: 4px; padding: 6px 8px; vertical-align: top; }
+        .indicador .etiqueta { color: #555555; font-size: 8.5pt; }
+        .indicador .valor { font-size: 14pt; font-weight: bold; margin-top: 2px; }
+        .indicador .detalle { color: #777777; font-size: 8pt; margin-top: 2px; }
+        .grafico { width: 100%; border-collapse: collapse; margin-top: 4px; table-layout: fixed; }
+        .grafico td { padding: 0 2px; text-align: center; }
+        .grafico .cifra { font-size: 7pt; color: #555555; vertical-align: bottom; }
+        .grafico .columna { height: 92px; vertical-align: bottom; border-bottom: 1px solid #8c959f; }
+        .grafico .nombre { font-size: 6.5pt; color: #555555; padding-top: 2px; vertical-align: top; }
+        .barra { background-color: #4a7bd0; width: 70%; margin: 0 auto; }
+        .datos { width: 100%; border-collapse: collapse; margin-top: 4px; -fs-table-paginate: paginate; }
+        .datos thead { display: table-header-group; }
+        .datos tr { page-break-inside: avoid; }
+        .datos th { background-color: #eef1f4; text-align: left; padding: 4px 5px; border-bottom: 1px solid #8c959f; font-size: 8.5pt; }
+        .datos td { padding: 3px 5px; border-bottom: 1px solid #e3e7eb; font-size: 8.5pt; vertical-align: top; }
+        .datos .num { text-align: right; white-space: nowrap; }
+        .datos tr.total td { font-weight: bold; border-top: 1px solid #1f2328; border-bottom: none; }
+        .vacio { color: #777777; font-style: italic; padding: 6px 0; }
+        .nota { color: #777777; font-size: 8.5pt; margin: 0 0 2px 0; }
+        .acciones { text-align: right; margin-bottom: 8px; }
+        .acciones button { font-size: 10pt; padding: 6px 14px; cursor: pointer; }
+        @media print { .acciones { display: none; } body.pantalla { margin: 0; padding: 0; max-width: none; } }
+    </style>
+</head>
+<body th:class="${paraPdf} ? '' : 'pantalla'">
+
+<div class="acciones" th:unless="${paraPdf}">
+    <button type="button" onclick="window.print()">Imprimir</button>
+</div>
+
+<div class="encabezado">
+    <div class="negocio" th:text="${negocio}">House of Cut</div>
+    <h1 th:text="${r.titulo}">Reporte</h1>
+    <p class="descripcion" th:text="${r.descripcion}">Descripción</p>
+    <table class="meta">
+        <tr>
+            <td><span class="etiqueta">Periodo: </span><strong th:text="${r.periodo}">Mensual</strong></td>
+            <td th:each="f : ${r.filtros}"><span class="etiqueta" th:text="${f.etiqueta + ': '}">Filtro: </span><strong
+                    th:text="${f.valor}">Todos</strong></td>
+        </tr>
+        <tr>
+            <td th:attr="colspan=${#lists.size(r.filtros) + 1}">
+                <span class="etiqueta">Generado por </span><span th:text="${r.generadoPor}">Admin</span>
+                <span class="etiqueta"> el </span><span th:text="${fmt.fechaHora(r.generadoEn)}">01/01/2026 10:00</span>
+            </td>
+        </tr>
+    </table>
+</div>
+
+<table class="indicadores">
+    <tr>
+        <td class="indicador" th:each="i : ${r.indicadores}">
+            <div class="etiqueta" th:text="${i.etiqueta}">Indicador</div>
+            <div class="valor" th:text="${fmt.valor(i.valor, i.tipo)}">0</div>
+            <div class="detalle" th:if="${i.detalle != null}" th:text="${i.detalle}">detalle</div>
+        </td>
+    </tr>
+</table>
+
+<!-- Gráfico de barras verticales hecho con una tabla (el PDF no ejecuta JavaScript). Con muchas barras
+     se omiten las cifras de arriba para que no se encimen; están en las tablas. -->
+<div th:if="${r.grafico != null}" th:with="muchas=${#lists.size(r.grafico.etiquetas) > 16}">
+    <h2 th:text="${r.grafico.titulo}">Gráfico</h2>
+    <table class="grafico">
+        <tr th:unless="${muchas}">
+            <td class="cifra" th:each="v : ${r.grafico.valores}" th:text="${fmt.valor(v, r.grafico.tipo)}">0</td>
+        </tr>
+        <tr>
+            <td class="columna" th:each="etiqueta, it : ${r.grafico.etiquetas}">
+                <div class="barra" th:style="${'height: ' + (fmt.ancho(r.grafico, it.index) * 0.9 + 1) + 'px'}"></div>
+            </td>
+        </tr>
+        <tr>
+            <td class="nombre" th:each="etiqueta : ${r.grafico.etiquetas}" th:text="${etiqueta}">Etiqueta</td>
+        </tr>
+    </table>
+</div>
+
+<div th:each="t : ${r.tablas}">
+    <h2 th:text="${t.titulo}">Tabla</h2>
+    <p class="nota" th:if="${t.descripcion != null}" th:text="${t.descripcion}">Descripción</p>
+    <div class="vacio" th:if="${#lists.isEmpty(t.filas)}">Sin datos en el periodo.</div>
+    <table class="datos" th:unless="${#lists.isEmpty(t.filas)}">
+        <thead>
+        <tr>
+            <th th:each="c : ${t.columnas}" th:text="${c.titulo}" th:classappend="${fmt.numerica(c.tipo)} ? 'num' : ''">Columna</th>
+        </tr>
+        </thead>
+        <tbody>
+        <tr th:each="fila : ${t.filas}">
+            <td th:each="c, it : ${t.columnas}" th:classappend="${fmt.numerica(c.tipo)} ? 'num' : ''"
+                th:text="${fmt.valor(fila[it.index], c.tipo)}">valor</td>
+        </tr>
+        <!-- Totales como última fila (en tfoot el PDF los repetiría al pie de cada página). -->
+        <tr class="total" th:if="${t.totales != null}">
+            <td th:each="c, it : ${t.columnas}" th:classappend="${fmt.numerica(c.tipo)} ? 'num' : ''"
+                th:text="${it.first and t.totales[it.index] == null} ? 'Total' : ${fmt.valor(t.totales[it.index], c.tipo)}">Total</td>
+        </tr>
+        </tbody>
+    </table>
+</div>
+
+</body>
+</html>
