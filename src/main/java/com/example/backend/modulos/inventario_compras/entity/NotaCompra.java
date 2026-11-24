@@ -2,7 +2,7 @@ package com.example.backend.modulos.inventario_compras.entity;
 
 import com.example.backend.modulos.seguridad_usuarios.entity.Usuario;
 import com.example.backend.modulos.ventas_caja.entity.MovimientoCaja;
-import com.example.backend.modulos.ventas_caja.entity.PasarelaPago;
+import com.example.backend.modulos.reportes_integraciones.entity.PasarelaPago;
 import jakarta.persistence.*;
 import lombok.Getter;
 import lombok.NoArgsConstructor;

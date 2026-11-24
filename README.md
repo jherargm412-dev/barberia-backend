@@ -1,207 +1,157 @@
-# Barbería House of Cut — Backend
+# HOUSE of CUT — Sistema de información para la barbería (Backend)
 
-API REST en Spring Boot 4 + PostgreSQL + Flyway + JWT.
+Sistema web que permite a la barbería **HOUSE of CUT** gestionar su agenda de citas, el flujo de caja,
+el inventario y el cálculo de comisiones de los barberos, con reportes, bitácora de auditoría,
+pagos con tarjeta y comandos de voz.
 
-Despliegue en Render desde `main` de ambos repositorios: ver
-[docs/render.md](docs/render.md) y [`render.yaml`](render.yaml).
+Este repositorio es la **API REST** (Spring Boot). El frontend está en
+[barberia-frontend](https://github.com/jherargm412-dev/barberia-frontend).
 
-## Requisitos
+🌐 **Sistema en línea:** https://houseofcut-test-web.onrender.com/
 
-- **Java 21** o superior
-- **PostgreSQL** (local, puerto 5432)
-- Git
+---
 
-No hace falta instalar Gradle: se usa el wrapper (`./gradlew`).
+## Datos académicos
 
-## Primera vez (configuración local)
-
-1. Clonar el repositorio:
-
-   ```bash
-   git clone https://github.com/jherargm412-dev/barberia-backend.git
-   cd barberia-backend
-   ```
-
-2. Crear la base de datos vacía en PostgreSQL (las tablas las crea Flyway solo):
-
-   ```sql
-   CREATE DATABASE barber;
-   ```
-
-3. Copiar el archivo de ejemplo de variables y poner **tus** valores:
-
-   ```bash
-   cp .env.example .env       # macOS / Linux / Git Bash / PowerShell
-   copy .env.example .env     # Windows (CMD)
-   ```
-
-   Como mínimo cambia `DB_PASSWORD` (la contraseña de tu PostgreSQL) y `JWT_SECRET`
-   (cualquier texto de 32 caracteres o más). Para probar Stripe, reemplaza también
-   `STRIPE_SECRET_KEY` y `STRIPE_PUBLISHABLE_KEY` con las claves **de prueba** de la
-   cuenta del equipo. El `.env` **nunca** se sube a Git.
-
-4. Levantar el backend:
-
-   ```bash
-   ./gradlew bootRun        # macOS / Linux
-   gradlew.bat bootRun      # Windows
-   ```
-
-   La API queda en `http://localhost:8080`.
-
-### Probar pagos con Stripe
-
-1. En el Dashboard de Stripe, activa el modo de prueba y copia las claves de prueba
-   (`sk_test_...` y `pk_test_...`) en `STRIPE_SECRET_KEY` y `STRIPE_PUBLISHABLE_KEY`
-   de `barberia-backend/.env`. No compartas ni subas la clave secreta.
-2. Reinicia el backend (`gradlew.bat bootRun`) o, para el entorno completo en Docker,
-   ejecuta `docker compose up --build` desde `barberia-backend`. Compose también lee
-   esas dos variables del `.env` y las pasa al contenedor del backend.
-3. Inicia sesión con un usuario que tenga los permisos `VENTA_REGISTRAR` y
-   `PASARELA_PAGO_COBRAR`, y abre una caja. En **Ventas → Registrar venta**, agrega
-   servicios o productos y pulsa **Calcular saldo**; entonces aparecerá Stripe como
-   método de cobro si está activo y correctamente configurado.
-4. Completa el formulario seguro de Stripe con una tarjeta de prueba publicada por
-   Stripe (por ejemplo, `4242 4242 4242 4242`), una fecha futura y cualquier CVC.
-
-Estas instrucciones son solo para pruebas. No configures claves live en el entorno
-local ni en archivos versionados; pasar a producción requiere configurar los secretos
-en el proveedor de despliegue y verificar previamente la cuenta, el país y la moneda.
-
-## Pruebas
-
-```bash
-./gradlew test          # macOS / Linux
-gradlew.bat test        # Windows
-```
-
-Las pruebas usan la misma base `barber` pero en un esquema aislado `cu_test`
-(nunca tocan los datos de `public`).
-
-## Base de datos (Flyway)
-
-¿Qué es Flyway y por qué no usamos `ddl-auto=update`? Lee [docs/flyway.md](docs/flyway.md).
-
-Los cambios de esquema van **solo** como migraciones nuevas en
-`src/main/resources/db/migration`, con el siguiente número libre:
-
-```
-V3__descripcion_corta.sql
-```
-
-- **Nunca** edites una migración que ya está en `main`: crea una nueva.
-- Antes de crear una migración, haz `git pull` para no repetir el número de versión
-  de un compañero.
-
-## Despliegue (Railway)
-
-Railway construye la imagen con el `Dockerfile` cada vez que se hace merge a `main`.
-**El `Dockerfile` no corre las pruebas**: corre `./gradlew test` antes de aprobar un Pull Request.
-
-### Probar el despliegue en tu máquina (Docker Desktop)
-
-```bash
-docker compose up --build     # PostgreSQL + backend en perfil prod
-docker compose down -v        # apagar y borrar la base de prueba
-```
-
-Usa `JWT_SECRET` y `APP_SEED_ADMIN_*` de tu `.env` y una base propia dentro de Docker
-(no toca tu PostgreSQL local). Comprueba que `http://localhost:8080/actuator/health` responda `UP`.
-
-### Variables del servicio en Railway
-
-| Variable | Valor |
+| | |
 |---|---|
-| `SPRING_PROFILES_ACTIVE` | `prod` |
-| `DB_URL` | `jdbc:postgresql://${{Postgres.PGHOST}}:${{Postgres.PGPORT}}/${{Postgres.PGDATABASE}}` |
-| `DB_USERNAME` | `${{Postgres.PGUSER}}` |
-| `DB_PASSWORD` | `${{Postgres.PGPASSWORD}}` |
-| `JWT_SECRET` | Uno nuevo, solo para producción (`openssl rand -base64 48`) |
-| `APP_SEED_ADMIN_EMAIL` / `APP_SEED_ADMIN_PASSWORD` / `APP_SEED_ADMIN_NOMBRE` | El administrador real |
-| `CORS_ORIGIN` | URL del frontend, sin `/` al final |
-| `APP_FRONTEND_URL` | URL del frontend (enlaces de invitación) |
-| `APP_CORREO_PROVEEDOR` | `brevo` |
-| `BREVO_API_KEY` | Clave de Brevo (**SMTP y API → Claves API**) |
-| `MAIL_FROM` | Remitente verificado en Brevo (`barberia.houseofcut@gmail.com`) |
+| **Universidad** | Universidad Autónoma Gabriel René Moreno (UAGRM) |
+| **Facultad** | Facultad de Ingeniería en Ciencias de la Computación y Telecomunicaciones |
+| **Materia** | Ingeniería de Requisitos y Modelado |
+| **Docente** | Ing. Angélica Garzón Cuéllar |
+| **Grupo** | 2 |
+| **Metodología** | PUDS (Proceso Unificado de Desarrollo de Software) con UML |
 
-`PORT` lo pone Railway solo. En **Settings → Healthcheck Path** va `/actuator/health`.
+| Integrante | Registro |
+|---|---|
+| Balceras Quispe Jhan Carla Anthonely | 223041726 |
+| Choque Terrazas Andres Eduardo | 224027026 |
+| Gonzales Montero David Jherar | 224027591 |
+| Hoyos Saldaña Lucas Bastian | 223042838 |
+| Pinto Alba Jose Elias | 223043826 |
+| Porcel Calizaya Luis Fernando | 221045511 |
 
-**Correo:** Railway (planes Free y Hobby) bloquea SMTP, por eso en producción los correos salen por la
-API HTTPS de Brevo (`BrevoCorreoService`). Si falta `BREVO_API_KEY` o `MAIL_FROM`, el backend no arranca.
-En local se sigue usando SMTP (`APP_CORREO_PROVEEDOR=smtp`, el valor por defecto).
+---
 
-## 📁 Estructura del Repositorio
+## Funcionalidades (casos de uso)
+
+El sistema implementa **29 casos de uso** organizados en **7 paquetes**, desarrollados en cuatro ciclos.
+
+| Paquete | Caso de uso | Ciclo |
+|---|---|:---:|
+| **Seguridad y usuarios** (`seguridad_usuarios`) | CU01 Gestionar usuarios y asignar roles | 1 |
+| | CU02 Iniciar sesión | 1 |
+| | CU03 Gestionar roles y permisos | 1 |
+| | CU04 Configurar perfil personal | 1 |
+| | CU05 Consultar bitácora | 1 |
+| **Gestión de clientes** (`gestion_clientes`) | CU06 Gestionar clientes | 1 |
+| | CU07 Consultar historial del cliente | 4 |
+| **Servicios y reservas** (`servicios_reservas`) | CU08 Gestionar catálogo de servicios | 1 |
+| | CU09 Gestionar horarios de disponibilidad | 2 |
+| | CU10 Consultar disponibilidad | 2 |
+| | CU11 Gestionar cita | 2 |
+| | CU12 Solicitar cita | 2 |
+| | CU13 Consultar servicios | 2 |
+| | CU14 Registrar pago de anticipo | 2 |
+| | CU15 Cancelar reserva por no pago de anticipo | 4 |
+| | CU16 Consultar agenda de citas | 2 |
+| **Gestión de empleados** (`gestion_empleados`) | CU17 Gestionar barbero | 1 |
+| | CU18 Registrar liquidación de comisiones | 3 |
+| | CU19 Consultar comisiones | 3 |
+| **Ventas y caja** (`ventas_caja`) | CU20 Registrar venta | 3 |
+| | CU21 Gestionar caja | 2 |
+| **Inventario y compras** (`inventario_compras`) | CU22 Gestionar productos e insumos | 3 |
+| | CU23 Consultar catálogo de productos | 4 |
+| | CU24 Gestionar proveedores | 3 |
+| | CU25 Registrar compras de productos | 3 |
+| | CU26 Registrar movimiento de inventario | 4 |
+| **Reportes e integraciones** (`reportes_integraciones`) | CU27 Generar reportes | 4 |
+| | CU28 Comando de voz | 4 |
+| | CU29 Gestionar pasarela y métodos de pago | 3 |
+
+---
+
+## Tecnologías
+
+| Capa | Tecnología |
+|---|---|
+| Backend | Java 21 con Spring Boot 4 (Spring Security con JWT, Spring Data JPA) |
+| Frontend | React 19 + TypeScript + Vite + Material UI |
+| Base de datos | PostgreSQL, con migraciones Flyway |
+| Pagos en línea | Stripe (modo de prueba) |
+| Correo | Brevo |
+| Reportes | Exportación a PDF, Excel y HTML; gráficos con MUI X Charts |
+| Comandos de voz | Reconocimiento del navegador (Web Speech API) y Vosk como respaldo local |
+| Despliegue | Docker + Render |
+
+---
+
+## Arquitectura
+
+Aplicación **cliente–servidor** en dos repositorios: un **frontend** web (React) que consume una
+**API REST** (Spring Boot).
+
+| En los diagramas | En el backend | En el frontend |
+|---|---|---|
+| Paquete | `modulos/<paquete>/` | `src/modulos/<paquete>/` |
+| Interfaz | — | Página en `pages/<caso_de_uso>/` |
+| Control | Controlador en `controller/<caso_de_uso>/` y lógica en `service/<caso_de_uso>/` | Llamadas a la API en `api/<caso_de_uso>/` |
+| Entidad | Clase en `entity/` (una tabla de la base de datos) | Tipos en `types/<caso_de_uso>.ts` |
+
+El menú lateral del sistema también está dividido en estos 7 paquetes, con sus casos de uso dentro.
+
+---
+
+## Estructura del repositorio
 
 ```
 barberia-backend/
-│
 ├── src/main/java/.../backend/
-│   ├── security/               # JWT, login y permisos
-│   ├── exception/              # Errores y manejador global
-│   ├── comun/                  # Clases compartidas (PaginaRespuesta)
-│   └── modulos/
-│       ├── seguridad_usuarios/ # CU01, CU02, CU05 (Usuarios, Login, Bitácora)
-│       ├── gestion_clientes/   # CU06 (Clientes)
-│       ├── gestion_empleados/  # Por implementar
-│       ├── servicios_reservas/ # CU08 (Catálogo de servicios, Reservas)
-│       ├── ventas_caja/        # CU20 Registrar Venta, CU21 Caja y CU29 Pasarela de pago
-│       ├── inventario_compras/ # CU22 Productos, CU23 Catálogo público de productos, CU25 Compras
-│       └── reportes/           # Por implementar
-│
+│   ├── security/                  JWT, login y permisos
+│   ├── exception/                 Errores y manejador global
+│   ├── comun/                     Clases compartidas (PaginaRespuesta, tareas programadas)
+│   └── modulos/                   Código por paquete
+│       ├── seguridad_usuarios/        CU01 a CU05
+│       ├── gestion_clientes/          CU06 y CU07
+│       ├── servicios_reservas/        CU08 a CU16
+│       ├── gestion_empleados/         CU17 a CU19
+│       ├── ventas_caja/               CU20 y CU21
+│       ├── inventario_compras/        CU22 a CU26
+│       └── reportes_integraciones/    CU27 a CU29
+│           ├── controller/            Controladores, una carpeta por caso de uso
+│           ├── service/               Lógica de negocio, una carpeta por caso de uso
+│           ├── dto/                   Datos que entran y salen de la API, por caso de uso
+│           ├── entity/                Entidades (una tabla de la base de datos)
+│           └── repository/            Acceso a la base de datos
 ├── src/main/resources/
-│   ├── application.properties  # Configuración (lee el .env)
-│   └── db/migration/           # Migraciones de BD con Flyway
-│
-├── src/test/                   # Pruebas
-├── funcionalidades/            # Documentación de cada caso de uso
-├── docs/                       # Guías (Flyway)
-├── Dockerfile                  # Imagen para Railway
-├── docker-compose.yml          # Prueba local del despliegue
-├── .env.example                # Plantilla de variables de entorno
-└── build.gradle                # Dependencias del proyecto
+│   ├── application.properties     Configuración (lee el .env)
+│   └── db/migration/              Migraciones de la base de datos (Flyway)
+├── src/test/                      Pruebas de integración, por paquete
+├── funcionalidades/               Documentación PUDS de cada caso de uso, por ciclo
+├── docs/                          Guías (Flyway, Render)
+├── Dockerfile y render.yaml       Imagen y configuración del despliegue en Render
+└── README.md
 ```
 
-Lo **global** (fuera de los módulos) sirve a toda la app: cualquier módulo puede lanzar
-`RecursoNoEncontradoException`, usar `UsuarioAutenticado` o devolver `PaginaRespuesta`.
-Avisa al equipo antes de cambiar algo ahí.
+Dentro de cada paquete, `controller`, `service`, `mapper` y `dto` llevan **una subcarpeta por caso de uso**
+(por ejemplo `controller/generar_reportes/`). `entity` y `repository` no llevan subcarpetas, porque una
+misma tabla la usan varios casos de uso. Un caso de uso no importa a otro: lo que comparten va en la raíz
+de la capa o en `util/`. Lo global (`security`, `exception`, `comun`) sirve a toda la aplicación; avisa al
+equipo antes de cambiarlo.
 
-Dentro de cada **módulo**, primero va la **capa** (`controller`, `service`, `dto`…) y dentro
-de cada capa, **una carpeta por caso de uso**:
+---
 
-```
-modulos/seguridad_usuarios/
-  controller/
-    iniciar_sesion/        AuthController                    (CU02)
-    gestionar_usuarios/    UsuarioController, RolController  (CU01)
-  service/
-    iniciar_sesion/        AuthService
-    gestionar_usuarios/    UsuarioService, RolService
-  mapper/
-    gestionar_usuarios/    UsuarioMapper   (convierte entidad → DTO)
-  dto/
-    iniciar_sesion/        LoginRequest, LoginResponse, UsuarioSesion
-    gestionar_usuarios/    CrearUsuarioRequest, UsuarioDetalle…
-  entity/                  compartidas por todos los casos de uso del módulo
-  repository/              compartidos por todos los casos de uso del módulo
-  seed/                    AdminSeeder (datos iniciales de este módulo)
-  audit/                   BitacoraService (otros módulos pueden usarlo para registrar acciones)
-  util/
-```
+## Ramas de trabajo (Git)
 
-- **`controller`, `service`, `mapper` y `dto`**: tu clase va en la subcarpeta de **tu caso de uso**
-  (créala si no existe, ej. `service/configurar_perfil/`).
-- **`entity` y `repository` no llevan subcarpetas**: una misma tabla (por ejemplo `usuario`)
-  la usan varios casos de uso.
-- Un caso de uso **no importa a otro caso de uso**. Si dos necesitan lo mismo, va en la raíz
-  de la capa (sin subcarpeta) o en `util/`.
+| Rama | Uso |
+|---|---|
+| `main` | Versión estable; es la que se despliega en Render |
+| `dev-prueba` | Integración y pruebas del trabajo de todo el equipo |
+| `dev-jhancarla` | Trabajo de Jhan Carla Anthonely Balceras Quispe |
+| `dev-eduardo` | Trabajo de Andres Eduardo Choque Terrazas |
+| `dev-jherar` | Trabajo de David Jherar Gonzales Montero |
+| `dev-lucas` | Trabajo de Lucas Bastian Hoyos Saldaña |
+| `dev-elias` | Trabajo de Jose Elias Pinto Alba |
+| `dev-fernando` | Trabajo de Luis Fernando Porcel Calizaya |
 
-La documentación de cada caso de uso está en `funcionalidades/`.
-
-## Flujo de trabajo con Git
-
-1. Actualiza `main`: `git checkout main && git pull`
-2. Crea una rama para tu caso de uso: `git checkout -b feature/CU05-reservas`
-3. Haz commits pequeños y sube tu rama: `git push -u origin feature/CU05-reservas`
-4. Abre un **Pull Request** hacia `main` en GitHub para que otro lo revise.
-
-No hagas push directo a `main`.
+Flujo: **rama personal → Pull Request a `dev-prueba` → pruebas → Pull Request a `main`**.

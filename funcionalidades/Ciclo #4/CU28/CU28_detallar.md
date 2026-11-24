@@ -6,7 +6,7 @@
 
 **Prioridad:** Baja
 
-**Paquete Backend / Frontend:** `asistencia_usuario` (`comando_voz`) / `modulos/asistencia_usuario`
+**Paquete Backend / Frontend:** `reportes_integraciones` (`comando_voz`) / `modulos/reportes_integraciones`
 
 ### Descripción funcional
 

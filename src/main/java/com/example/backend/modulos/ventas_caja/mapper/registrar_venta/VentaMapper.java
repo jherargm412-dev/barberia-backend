@@ -3,6 +3,7 @@ package com.example.backend.modulos.ventas_caja.mapper.registrar_venta;
 import com.example.backend.modulos.seguridad_usuarios.entity.Cliente;
 import com.example.backend.modulos.servicios_reservas.entity.Reserva;
 import com.example.backend.modulos.servicios_reservas.entity.Servicio;
+import com.example.backend.modulos.reportes_integraciones.entity.PasarelaPago;
 import com.example.backend.modulos.inventario_compras.entity.Producto;
 import com.example.backend.modulos.ventas_caja.dto.registrar_venta.*;
 import com.example.backend.modulos.ventas_caja.entity.*;
