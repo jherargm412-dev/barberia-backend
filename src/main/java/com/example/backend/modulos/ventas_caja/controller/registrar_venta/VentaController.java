@@ -1,8 +1,8 @@
 package com.example.backend.modulos.ventas_caja.controller.registrar_venta;
 
-import com.example.backend.modulos.ventas_caja.dto.gestionar_pasarela_pago.CobroStripeIniciadoResponse;
-import com.example.backend.modulos.ventas_caja.dto.gestionar_pasarela_pago.CobroTarjetaResponse;
-import com.example.backend.modulos.ventas_caja.dto.gestionar_pasarela_pago.IniciarCobroStripeRequest;
+import com.example.backend.modulos.reportes_integraciones.dto.gestionar_pasarela_pago.CobroStripeIniciadoResponse;
+import com.example.backend.modulos.reportes_integraciones.dto.gestionar_pasarela_pago.CobroTarjetaResponse;
+import com.example.backend.modulos.reportes_integraciones.dto.gestionar_pasarela_pago.IniciarCobroStripeRequest;
 import com.example.backend.modulos.ventas_caja.dto.registrar_venta.*;
 import com.example.backend.modulos.ventas_caja.service.registrar_venta.VentaService;
 import com.example.backend.security.UsuarioAutenticado;

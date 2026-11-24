@@ -1,5 +1,6 @@
 package com.example.backend.modulos.ventas_caja.entity;
 
+import com.example.backend.modulos.reportes_integraciones.entity.PasarelaPago;
 import com.example.backend.modulos.seguridad_usuarios.entity.Usuario;
 import jakarta.persistence.*;
 import lombok.Getter;

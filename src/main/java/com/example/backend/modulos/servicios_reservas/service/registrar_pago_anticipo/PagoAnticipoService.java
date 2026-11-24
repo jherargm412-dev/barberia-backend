@@ -25,7 +25,7 @@ import com.example.backend.modulos.servicios_reservas.repository.PagoAnticipoRep
 import com.example.backend.modulos.servicios_reservas.repository.ReservaRepository;
 import com.example.backend.modulos.ventas_caja.entity.Caja;
 import com.example.backend.modulos.ventas_caja.entity.MovimientoCaja;
-import com.example.backend.modulos.ventas_caja.entity.PasarelaPago;
+import com.example.backend.modulos.reportes_integraciones.entity.PasarelaPago;
 import com.example.backend.modulos.ventas_caja.repository.CajaRepository;
 import com.example.backend.modulos.ventas_caja.repository.MovimientoCajaRepository;
 import com.example.backend.security.UsuarioAutenticado;

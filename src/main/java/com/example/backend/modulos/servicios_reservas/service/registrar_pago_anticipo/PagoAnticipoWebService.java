@@ -25,10 +25,10 @@ import com.example.backend.modulos.servicios_reservas.repository.ReservaReposito
 import com.example.backend.modulos.servicios_reservas.service.ActorReservasWeb;
 import com.example.backend.modulos.servicios_reservas.service.solicitar_cita.ReservaInvitadoService;
 import com.example.backend.modulos.ventas_caja.entity.Caja;
-import com.example.backend.modulos.ventas_caja.entity.PasarelaPago;
+import com.example.backend.modulos.reportes_integraciones.entity.PasarelaPago;
 import com.example.backend.modulos.ventas_caja.repository.CajaRepository;
-import com.example.backend.modulos.ventas_caja.repository.PasarelaPagoRepository;
-import com.example.backend.modulos.ventas_caja.service.gestionar_pasarela_pago.StripeCliente;
+import com.example.backend.modulos.reportes_integraciones.repository.PasarelaPagoRepository;
+import com.example.backend.modulos.reportes_integraciones.service.gestionar_pasarela_pago.StripeCliente;
 import com.example.backend.security.UsuarioAutenticado;
 import lombok.RequiredArgsConstructor;
 

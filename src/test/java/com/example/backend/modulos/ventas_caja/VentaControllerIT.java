@@ -1,8 +1,8 @@
 package com.example.backend.modulos.ventas_caja;
 
 import com.example.backend.modulos.seguridad_usuarios.IntegracionBaseTest;
-import com.example.backend.modulos.ventas_caja.service.gestionar_pasarela_pago.StripeCliente;
-import com.example.backend.modulos.ventas_caja.service.gestionar_pasarela_pago.StripeCliente.PaymentIntent;
+import com.example.backend.modulos.reportes_integraciones.service.gestionar_pasarela_pago.StripeCliente;
+import com.example.backend.modulos.reportes_integraciones.service.gestionar_pasarela_pago.StripeCliente.PaymentIntent;
 import com.example.backend.modulos.ventas_caja.service.registrar_venta.VentaService;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
