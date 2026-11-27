@@ -93,6 +93,50 @@ V3__descripcion_corta.sql
 - Antes de crear una migración, haz `git pull` para no repetir el número de versión
   de un compañero.
 
+### Datos de prueba (población)
+
+`Base de Datos/Poblacion.sql` inserta usuarios, clientes y empleados con nombres reales,
+además de proveedores, servicios, productos, movimientos de inventario, horarios, reservas,
+caja, ventas, compras y liquidaciones. **No crea roles, permisos ni bitácora**: solo asigna
+roles ya existentes.
+
+Se ejecuta a mano, después de que Flyway haya creado el esquema:
+
+```powershell
+$env:PGPASSWORD='<tu contraseña>'; $env:PGCLIENTENCODING='UTF8'
+psql -h localhost -U postgres -d barber -v ON_ERROR_STOP=1 -f "Base de Datos\Poblacion.sql"
+```
+
+Es idempotente (se puede repetir sin duplicar datos). Todas las contraseñas están hasheadas
+con BCrypt fuerza 12, válidas para el login:
+
+**Empleados**
+
+| Nombre | Correo | Contra |
+|---|---|---|
+| Ronald Manuel Vargas Quispe | ronald@gmail.com | Ronald123! |
+| Camila Andrea Rojas Mendoza | camila@gmail.com | Camila123! |
+| Dayana Nicole Flores Pérez | dayana@gmail.com | Dayana123! |
+| Jorge Luis Mamani Condori | jorge@gmail.com | Jorge123! |
+| Andrés Felipe Cruz Salazar | andres@gmail.com | Andres123! |
+| Mauricio Daniel Añez Vargas | mauricio@gmail.com | Mauricio123! |
+
+**Clientes**
+
+| Nombre | Correo | Contra |
+|---|---|---|
+| Nicolas Junior Verduguez Teran | nicolas@gmail.com | Nicolas123! |
+| Carlos Miguel Terrazas Ruiz | carlos.ruiz@gmail.com | Carlos123! |
+| Ana María Pérez Gutiérrez | ana@gmail.com | Ana123! |
+| Diego Fernando Salazar Castro | diego@gmail.com | Diego123! |
+| María Elena Rojas Silva | maria@gmail.com | Maria123! |
+| Paola Patricia Mendoza Vega | paola@gmail.com | Paola123! |
+| Fernando Agustín Navarro Arce | fernando@gmail.com | Fernando123! |
+| Luisa Fernanda Castro Iriarte | luisa@gmail.com | Luisa123! |
+
+> `carlos@gmail.com` ya pertenece al barbero original `Carlos Miguel Terrazas`, por eso el
+> cliente nuevo usa `carlos.ruiz@gmail.com`.
+
 ## Despliegue (Railway)
 
 Railway construye la imagen con el `Dockerfile` cada vez que se hace merge a `main`.
